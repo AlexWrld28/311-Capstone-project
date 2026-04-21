@@ -1,5 +1,8 @@
 package org.csc311.capstone.models;
 
+/**
+ * @author Charles Gonzalez Jr
+ */
 public class Student {
     String ID,firstName,lastName,department,major,gpa;
 
