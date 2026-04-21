@@ -1,7 +1,11 @@
 package org.csc311.capstone.models;
 
+/**
+ * @author Charles Gonzalez Jr
+ */
 public class Staff {
-    private String ID,jobType,imgURL,email,password,firstName,lastName,department;
+
+    private String ID,jobType,imgURL,email,firstName,lastName,department;
 
     public String getID() {
         return ID;
@@ -33,14 +37,6 @@ public class Staff {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public String getFirstName() {
