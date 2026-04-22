@@ -10,6 +10,11 @@ import org.csc311.capstone.models.Staff;
 public class BackendHandler {
 
     Staff currentLoggedIn;
+    DBHandler dbHandler;
+
+    public BackendHandler() {
+        dbHandler = new DBHandler(false);
+    }
 
     public void login(){}
 

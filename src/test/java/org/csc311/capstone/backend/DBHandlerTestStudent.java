@@ -1,5 +1,7 @@
 package org.csc311.capstone.backend;
 
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -7,12 +9,18 @@ import org.junit.jupiter.api.Test;
  */
 class DBHandlerTestStudent {
 
-    DBHandler dbHandler;
+    static DBHandler dbHandler;
 
-    @Test
-    public void testConnection(){
+    @BeforeAll
+    public static void testConnection(){
         dbHandler = new DBHandler(true);
 
+    }
+
+    @Test
+    public void getAllStudents(){
+
+        Assertions.assertEquals(50,dbHandler.getAllStudents().size());
     }
   
 }

@@ -35,13 +35,37 @@ public class DBHandler {
            }catch (SQLException e) {
                e.printStackTrace();
            }
+        }else{
+            // normal database setup
         }
 
 
     }
 
     public List<Student> getAllStudents(){
-        return null;
+        List<Student> returnList = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            Statement stmt = conn.createStatement();
+            ResultSet result = stmt.executeQuery("SELECT * FROM student");
+            while(result.next()) {
+                String firstName =  result.getString("first_name");
+                String lastName = result.getString("last_name");
+                String department = result.getString("department");
+                String major = result.getString("major");
+                String gpa = result.getString("gpa");
+                Student newStudent = new Student();
+                newStudent.setFirstName(firstName);
+                newStudent.setLastName(lastName);
+                newStudent.setDepartment(department);
+                newStudent.setMajor(major);
+                newStudent.setGpa(gpa);
+                returnList.add(newStudent);
+            }
+        }catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return returnList;
     }
 
 
