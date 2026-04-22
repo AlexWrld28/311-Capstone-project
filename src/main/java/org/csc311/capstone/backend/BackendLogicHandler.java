@@ -7,12 +7,12 @@ import org.csc311.capstone.models.Staff;
  * @author Charles Gonzalez Jr
  * This class implements the backend logic and application login state.
  */
-public class BackendHandler {
+public class BackendLogicHandler {
 
     Staff currentLoggedIn;
     DBHandler dbHandler;
 
-    public BackendHandler() {
+    public BackendLogicHandler() {
         dbHandler = new DBHandler(false);
     }
 
