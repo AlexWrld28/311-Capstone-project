@@ -19,8 +19,13 @@ class DBHandlerTestStudent {
 
     @Test
     public void getAllStudents(){
-
         Assertions.assertEquals(50,dbHandler.getAllStudents().size());
+    }
+
+    @Test
+    public void getStudentByMajor(){
+        Assertions.assertEquals(3,dbHandler.getStudentsByMajor("Cognitive Science").size());
+
     }
   
 }
