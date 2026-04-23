@@ -6,6 +6,16 @@ package org.csc311.capstone.models;
 public class Student {
     String ID,firstName,lastName,department,major,gpa;
 
+    public Student(String id, String firstName, String lastName, String department, String major, String gpa) {
+        this.ID = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.department = department;
+        this.major = major;
+        this.gpa = gpa;
+
+    }
+
     public String getID() {
         return ID;
     }

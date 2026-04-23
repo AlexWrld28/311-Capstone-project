@@ -4,6 +4,7 @@ import org.csc311.capstone.models.Student;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class DBHandler {
@@ -17,7 +18,7 @@ public class DBHandler {
            CONNECTION_URL = "jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_UPPER=FALSE;INIT=RUNSCRIPT FROM 'classpath:data.sql'";
            USER = "sa";
            PASSWORD = "";
-           try (Connection conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+           try (var conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
                System.out.println("Connected to H2 in PostgreSQL mode!");
            }catch (SQLException e) {
                e.printStackTrace();
@@ -30,7 +31,7 @@ public class DBHandler {
     }
 
     /**
-     * takes in a Result set and create student object using row data.
+     * Helper methods to create student from sql query result
      * @param result
      * @return
      * @throws SQLException
@@ -42,13 +43,7 @@ public class DBHandler {
         String department = result.getString("department");
         String major = result.getString("major");
         String gpa = result.getString("gpa");
-        Student newStudent = new Student();
-        newStudent.setID(ID);
-        newStudent.setFirstName(firstName);
-        newStudent.setLastName(lastName);
-        newStudent.setDepartment(department);
-        newStudent.setMajor(major);
-        newStudent.setGpa(gpa);
+        Student newStudent = new Student(ID,firstName,lastName,department,major,gpa);
         return newStudent;
     }
 
@@ -88,6 +83,19 @@ public class DBHandler {
     }
 
 
+    public List<Student> getStudentsByDepartment(String department) {
+        List<Student> returnList = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            PreparedStatement stmt = conn.prepareStatement("SELECT * FROM student WHERE department = ?"); // do it this way to be safe from sql injection
+            stmt.setString(1, department);
+            ResultSet result = stmt.executeQuery();
+            while(result.next()) {
+                returnList.add(createStudent(result));
+            }
+        }catch (SQLException e) {
+            e.printStackTrace();
+        }
 
-
+        return returnList;
+    }
 }
