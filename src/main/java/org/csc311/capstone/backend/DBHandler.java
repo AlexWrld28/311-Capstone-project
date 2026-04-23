@@ -1,12 +1,14 @@
 package org.csc311.capstone.backend;
-
 import org.csc311.capstone.models.Student;
-
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
+/**
+ * The DBHandler class provides functionality for database access and operations.
+ * It supports interactions with a database to manage and retrieve student data.
+ * @author Charles Gonzalez JR
+ */
 public class DBHandler {
 
     String CONNECTION_URL;
@@ -37,14 +39,14 @@ public class DBHandler {
      * @throws SQLException
      */
     private Student createStudent(ResultSet result) throws SQLException {
-        String ID = result.getString("ID");
-        String firstName =  result.getString("first_name");
-        String lastName = result.getString("last_name");
-        String department = result.getString("department");
-        String major = result.getString("major");
-        String gpa = result.getString("gpa");
-        Student newStudent = new Student(ID,firstName,lastName,department,major,gpa);
-        return newStudent;
+        var ID = result.getString("ID");
+        var firstName =  result.getString("first_name");
+        var lastName = result.getString("last_name");
+        var department = result.getString("department");
+        var major = result.getString("major");
+        var gpa = result.getString("gpa");
+        return new Student(ID,firstName,lastName,department,major,gpa);
+
     }
 
     /**
@@ -52,10 +54,10 @@ public class DBHandler {
      * @return list of all students
      */
     public List<Student> getAllStudents(){
-        List<Student> returnList = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
-            Statement stmt = conn.createStatement();
-            ResultSet result = stmt.executeQuery("SELECT * FROM student");
+        var returnList = new ArrayList<Student>();
+        try (var conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            var stmt = conn.createStatement();
+            var result = stmt.executeQuery("SELECT * FROM student");
             while(result.next()) {
                 returnList.add(createStudent(result));
             }
@@ -66,12 +68,18 @@ public class DBHandler {
         return returnList;
     }
 
+    /**
+     * Retrieves a list of students based on their major.
+     *
+     * @param major the major to filter students by
+     * @return a list of students who are enrolled in the specified major
+     */
     public List<Student> getStudentsByMajor(String major){
-        List<Student> returnList = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
-            PreparedStatement stmt = conn.prepareStatement("SELECT * FROM student WHERE major = ?"); // do it this way to be safe from sql injection
+        var returnList = new ArrayList<Student>();
+        try (var conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            var stmt = conn.prepareStatement("SELECT * FROM student WHERE major = ?"); // do it this way to be safe from sql injection
             stmt.setString(1, major);
-            ResultSet result = stmt.executeQuery();
+            var result = stmt.executeQuery();
             while(result.next()) {
                 returnList.add(createStudent(result));
             }
@@ -83,12 +91,18 @@ public class DBHandler {
     }
 
 
+    /**
+     * Retrieves a list of students who belong to the specified department.
+     *
+     * @param department the department to filter students by
+     * @return a list of students in the specified department
+     */
     public List<Student> getStudentsByDepartment(String department) {
-        List<Student> returnList = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
-            PreparedStatement stmt = conn.prepareStatement("SELECT * FROM student WHERE department = ?"); // do it this way to be safe from sql injection
+        var returnList = new ArrayList<Student>();
+        try (var conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            var stmt = conn.prepareStatement("SELECT * FROM student WHERE department = ?"); // do it this way to be safe from sql injection
             stmt.setString(1, department);
-            ResultSet result = stmt.executeQuery();
+            var result = stmt.executeQuery();
             while(result.next()) {
                 returnList.add(createStudent(result));
             }
