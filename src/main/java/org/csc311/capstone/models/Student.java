@@ -1,10 +1,39 @@
 package org.csc311.capstone.models;
 
+import com.opencsv.bean.CsvBindAndJoinByPosition;
+import com.opencsv.bean.CsvBindByName;
+import com.opencsv.bean.CsvBindByPosition;
+
+import java.io.Serializable;
+
 /**
  * @author Charles Gonzalez Jr
  */
-public class Student {
-    String ID,firstName,lastName,department,major,gpa;
+public class Student{
+
+    @CsvBindByPosition(position = 0)
+    @CsvBindByName(column = "ID")
+    String ID;
+
+    @CsvBindByPosition(position = 1)
+    @CsvBindByName(column = "First Name")
+    String firstName;
+
+    @CsvBindByPosition(position = 2)
+    @CsvBindByName(column = "Last Name")
+    String lastName;
+
+    @CsvBindByPosition(position = 3)
+    @CsvBindByName(column = "Department")
+    String department;
+
+    @CsvBindByPosition(position = 4)
+    @CsvBindByName(column = "Major")
+    String major;
+
+    @CsvBindByPosition(position = 5)
+    @CsvBindByName(column = "GPA")
+    String gpa;
 
     public Student(String id, String firstName, String lastName, String department, String major, String gpa) {
         this.ID = id;
@@ -13,6 +42,10 @@ public class Student {
         this.department = department;
         this.major = major;
         this.gpa = gpa;
+
+    }
+
+    public Student() {
 
     }
 

@@ -2,6 +2,7 @@ module org.csc311.capstone {
     requires javafx.controls;
     requires javafx.fxml;
     requires java.sql;
+    requires com.opencsv;
 
 
     opens org.csc311.capstone to javafx.fxml;
