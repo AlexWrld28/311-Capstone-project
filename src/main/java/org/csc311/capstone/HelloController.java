@@ -60,12 +60,12 @@ public class HelloController {
     private final FilteredList<Student> filteredStudents = new FilteredList<>(students, student -> true);
 
     private TableView<Student> studentTable;
-    private Button updateButton;
     private Button deleteButton;
     private MenuItem updateMenuItem;
     private MenuItem deleteMenuItem;
     private TextField searchField;
     private ToggleButton themeToggle;
+    private Button addButton;
     private TextField idField;
     private TextField firstNameField;
     private TextField lastNameField;
@@ -277,8 +277,11 @@ public class HelloController {
             updateMenuItem.setDisable(!hasSelection);
             deleteMenuItem.setDisable(!hasSelection);
 
-            updateButton.setDisable(!hasSelection);
             deleteButton.setDisable(!hasSelection);
+
+            if (addButton != null) {
+                addButton.setText(hasSelection ? "Update Student" : "Add Student");
+            }
         });
 
         VBox tablePanel = new VBox(12, buildToolbar(), studentTable);
@@ -364,12 +367,17 @@ public class HelloController {
         grid.addRow(6, new Label("Profile Image"), imagePathField);
         grid.add(chooseImage, 1, 7);
 
-        Button add = new Button("Add");
-        add.getStyleClass().add("primary-button");
-        add.setOnAction(event -> saveStudent(false));
-        updateButton = new Button("Update");
-        updateButton.setOnAction(event -> saveStudent(true));
-        updateButton.setDisable(true);
+        addButton = new Button("Add Student");
+        addButton.getStyleClass().add("primary-button");
+
+        addButton.setOnAction(event -> {
+            if (studentTable.getSelectionModel().getSelectedItem() != null) {
+                saveStudent(true); //update
+            } else {
+                saveStudent(false); //add
+            }
+        });
+
         deleteButton = new Button("Delete");
         deleteButton.getStyleClass().add("danger-button");
         deleteButton.setOnAction(event -> deleteSelectedStudent());
@@ -380,7 +388,7 @@ public class HelloController {
         updateThemeButtonText();
         themeToggle.setOnAction(event -> toggleTheme());
 
-        HBox actions = new HBox(10, add, updateButton, deleteButton, clear);
+        HBox actions = new HBox(10, addButton, deleteButton, clear);
         actions.setAlignment(Pos.CENTER_LEFT);
 
         VBox form = new VBox(14, new Label("Student Details"), imageFrame, grid, actions, themeToggle);
@@ -395,6 +403,7 @@ public class HelloController {
             return;
         }
         idField.setText(student.getID());
+        idField.setEditable(false);
         firstNameField.setText(student.getFirstName());
         lastNameField.setText(student.getLastName());
         departmentBox.setValue(student.getDepartment());
@@ -550,6 +559,7 @@ public class HelloController {
 
     private void clearForm() {
         idField.clear();
+        idField.setEditable(true);
         firstNameField.clear();
         lastNameField.clear();
         departmentBox.getSelectionModel().clearSelection();
@@ -558,6 +568,7 @@ public class HelloController {
         imagePathField.clear();
         profilePreview.setImage(null);
         studentTable.getSelectionModel().clearSelection();
+        addButton.setText("Add Student");
     }
 
     private Student findStudentById(String id) {
