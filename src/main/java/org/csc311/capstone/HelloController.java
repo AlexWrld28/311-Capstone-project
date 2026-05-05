@@ -1,14 +1,585 @@
 package org.csc311.capstone;
 
+import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
+import org.csc311.capstone.models.Staff;
+import org.csc311.capstone.models.Student;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 
 public class HelloController {
-    @FXML
-    private Label welcomeText;
+    private static final String LIGHT_THEME = "light-theme";
+    private static final String DARK_THEME = "dark-theme";
 
     @FXML
-    protected void onHelloButtonClick() {
-        welcomeText.setText("Welcome to JavaFX Application!");
+    private BorderPane root;
+
+    private final ObservableList<Student> students = FXCollections.observableArrayList();
+    private final Map<String, Staff> users = new LinkedHashMap<>();
+    private final FilteredList<Student> filteredStudents = new FilteredList<>(students, student -> true);
+
+    private TableView<Student> studentTable;
+    private TextField idField;
+    private TextField firstNameField;
+    private TextField lastNameField;
+    private ComboBox<String> departmentBox;
+    private ComboBox<String> majorBox;
+    private TextField gpaField;
+    private TextField imagePathField;
+    private ImageView profilePreview;
+    private ComboBox<String> filterDepartmentBox;
+    private ComboBox<String> filterMajorBox;
+    private Label statusLabel;
+    private Staff currentUser;
+
+    @FXML
+    private void initialize() {
+        seedUsers();
+        seedStudents();
+        root.getStyleClass().add(LIGHT_THEME);
+        showLoginView();
+    }
+
+    private void seedUsers() {
+        Staff admin = new Staff();
+        admin.setID("A001");
+        admin.setFirstName("Demo");
+        admin.setLastName("Admin");
+        admin.setEmail("admin@school.edu");
+        admin.setPassword("admin123");
+        admin.setJobType("Administrator");
+        admin.setDepartment("Administration");
+        users.put(admin.getEmail().toLowerCase(), admin);
+    }
+
+    private void seedStudents() {
+        students.addAll(
+                new Student("1001", "Maya", "Chen", "Computer Science", "Software Engineering", "3.82", ""),
+                new Student("1002", "Liam", "Patel", "Mathematics", "Data Science", "3.65", ""),
+                new Student("1003", "Sofia", "Garcia", "Business", "Accounting", "3.41", "")
+        );
+    }
+
+    private void showLoginView() {
+        root.setTop(null);
+        root.setCenter(buildAuthCard(false));
+        root.setBottom(null);
+    }
+
+    private Node buildAuthCard(boolean registrationMode) {
+        Label title = new Label(registrationMode ? "Create Staff Account" : "Staff Login");
+        title.getStyleClass().add("auth-title");
+
+        TextField firstName = new TextField();
+        firstName.setPromptText("First name");
+
+        TextField lastName = new TextField();
+        lastName.setPromptText("Last name");
+
+        TextField email = new TextField();
+        email.setPromptText("Email");
+
+        PasswordField password = new PasswordField();
+        password.setPromptText("Password");
+
+        ComboBox<String> role = new ComboBox<>(FXCollections.observableArrayList("Administrator", "Staff"));
+        role.getSelectionModel().selectFirst();
+        role.setMaxWidth(Double.MAX_VALUE);
+
+        Label error = new Label();
+        error.getStyleClass().add("error-label");
+
+        Button primary = new Button(registrationMode ? "Register" : "Login");
+        primary.getStyleClass().add("primary-button");
+        primary.setMaxWidth(Double.MAX_VALUE);
+
+        Button secondary = new Button(registrationMode ? "Back to Login" : "Create Account");
+        secondary.getStyleClass().add("secondary-button");
+        secondary.setMaxWidth(Double.MAX_VALUE);
+
+        VBox form = new VBox(12);
+        form.getStyleClass().add("auth-card");
+        form.getChildren().add(title);
+        if (registrationMode) {
+            form.getChildren().addAll(firstName, lastName, role);
+        }
+        form.getChildren().addAll(email, password, error, primary, secondary);
+
+        primary.setOnAction(event -> {
+            if (registrationMode) {
+                registerUser(firstName, lastName, email, password, role, error);
+            } else {
+                loginUser(email.getText(), password.getText(), error);
+            }
+        });
+        secondary.setOnAction(event -> root.setCenter(buildAuthCard(!registrationMode)));
+
+        StackPane wrapper = new StackPane(form);
+        wrapper.getStyleClass().add("auth-wrapper");
+        return wrapper;
+    }
+
+    private void loginUser(String email, String password, Label error) {
+        Staff user = users.get(clean(email).toLowerCase());
+        if (user == null || !Objects.equals(user.getPassword(), password)) {
+            error.setText("Enter a valid staff email and password.");
+            return;
+        }
+
+        currentUser = user;
+        showDashboard();
+    }
+
+    private void registerUser(TextField firstName, TextField lastName, TextField email, PasswordField password,
+                              ComboBox<String> role, Label error) {
+        if (isBlank(firstName.getText()) || isBlank(lastName.getText()) || isBlank(email.getText()) || isBlank(password.getText())) {
+            error.setText("All registration fields are required.");
+            return;
+        }
+        String normalizedEmail = clean(email.getText()).toLowerCase();
+        if (!normalizedEmail.contains("@")) {
+            error.setText("Enter a valid email address.");
+            return;
+        }
+        if (users.containsKey(normalizedEmail)) {
+            error.setText("An account already exists for this email.");
+            return;
+        }
+
+        Staff staff = new Staff();
+        staff.setID("S%03d".formatted(users.size() + 1));
+        staff.setFirstName(clean(firstName.getText()));
+        staff.setLastName(clean(lastName.getText()));
+        staff.setEmail(normalizedEmail);
+        staff.setPassword(password.getText());
+        staff.setJobType(role.getValue());
+        staff.setDepartment("Student Services");
+        users.put(normalizedEmail, staff);
+        currentUser = staff;
+        showDashboard();
+    }
+
+    private void showDashboard() {
+        root.setTop(buildMenuBar());
+        root.setCenter(buildStudentWorkspace());
+        statusLabel = new Label();
+        statusLabel.getStyleClass().add("status-label");
+        root.setBottom(statusLabel);
+        BorderPane.setMargin(statusLabel, new Insets(0, 18, 14, 18));
+        updateStatus("Signed in as " + currentUser.getFirstName() + " " + currentUser.getLastName() + ".");
+    }
+
+    private MenuBar buildMenuBar() {
+        Menu records = new Menu("Records");
+        MenuItem add = new MenuItem("Add Student");
+        add.setAccelerator(KeyCombination.keyCombination("Shortcut+N"));
+        add.setOnAction(event -> saveStudent(false));
+        MenuItem update = new MenuItem("Update Selected");
+        update.setAccelerator(KeyCombination.keyCombination("Shortcut+S"));
+        update.setOnAction(event -> saveStudent(true));
+        MenuItem delete = new MenuItem("Delete Selected");
+        delete.setAccelerator(KeyCombination.keyCombination("Shortcut+D"));
+        delete.setOnAction(event -> deleteSelectedStudent());
+        records.getItems().addAll(add, update, delete);
+
+        Menu reports = new Menu("Reports");
+        MenuItem csv = new MenuItem("Export Filtered CSV");
+        csv.setAccelerator(KeyCombination.keyCombination("Shortcut+E"));
+        csv.setOnAction(event -> exportCsv());
+        reports.getItems().add(csv);
+
+        Menu view = new Menu("View");
+        MenuItem theme = new MenuItem("Switch Theme");
+        theme.setAccelerator(KeyCombination.keyCombination("Shortcut+T"));
+        theme.setOnAction(event -> toggleTheme());
+        view.getItems().add(theme);
+
+        Menu help = new Menu("Help");
+        MenuItem usage = new MenuItem("Usage Notes");
+        usage.setAccelerator(KeyCombination.keyCombination("F1"));
+        usage.setOnAction(event -> showHelp());
+        MenuItem logout = new MenuItem("Logout");
+        logout.setOnAction(event -> {
+            currentUser = null;
+            showLoginView();
+        });
+        help.getItems().addAll(usage, new SeparatorMenuItem(), logout);
+
+        return new MenuBar(records, reports, view, help);
+    }
+
+    private Node buildStudentWorkspace() {
+        studentTable = new TableView<>(filteredStudents);
+        studentTable.getStyleClass().add("student-table");
+        studentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        studentTable.getColumns().addAll(
+                column("ID", "ID"),
+                column("First Name", "firstName"),
+                column("Last Name", "lastName"),
+                column("Department", "department"),
+                column("Major", "major"),
+                column("GPA", "gpa")
+        );
+        studentTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, selected) -> populateForm(selected));
+
+        VBox tablePanel = new VBox(12, buildToolbar(), studentTable);
+        tablePanel.getStyleClass().add("table-panel");
+        VBox.setVgrow(studentTable, Priority.ALWAYS);
+
+        Node formPanel = buildStudentForm();
+        HBox workspace = new HBox(18, tablePanel, formPanel);
+        workspace.getStyleClass().add("workspace");
+        HBox.setHgrow(tablePanel, Priority.ALWAYS);
+        return workspace;
+    }
+
+    private TableColumn<Student, String> column(String title, String property) {
+        TableColumn<Student, String> column = new TableColumn<>(title);
+        column.setCellValueFactory(new PropertyValueFactory<>(property));
+        return column;
+    }
+
+    private Node buildToolbar() {
+        filterDepartmentBox = new ComboBox<>(FXCollections.observableArrayList("All Departments", "Computer Science", "Mathematics", "Business", "Health Sciences"));
+        filterDepartmentBox.getSelectionModel().selectFirst();
+        filterMajorBox = new ComboBox<>(FXCollections.observableArrayList("All Majors", "Software Engineering", "Data Science", "Accounting", "Nursing"));
+        filterMajorBox.getSelectionModel().selectFirst();
+
+        Button clearFilters = new Button("Clear Filters");
+        clearFilters.setOnAction(event -> {
+            filterDepartmentBox.getSelectionModel().selectFirst();
+            filterMajorBox.getSelectionModel().selectFirst();
+        });
+
+        filterDepartmentBox.valueProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+        filterMajorBox.valueProperty().addListener((observable, oldValue, newValue) -> applyFilters());
+
+        Label count = new Label();
+        count.textProperty().bind(Bindings.size(filteredStudents).asString("%d visible records"));
+        count.getStyleClass().add("count-label");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox toolbar = new HBox(10, filterDepartmentBox, filterMajorBox, clearFilters, spacer, count);
+        toolbar.getStyleClass().add("toolbar");
+        toolbar.setAlignment(Pos.CENTER_LEFT);
+        return toolbar;
+    }
+
+    private Node buildStudentForm() {
+        idField = new TextField();
+        firstNameField = new TextField();
+        lastNameField = new TextField();
+        departmentBox = new ComboBox<>(FXCollections.observableArrayList("Computer Science", "Mathematics", "Business", "Health Sciences"));
+        majorBox = new ComboBox<>(FXCollections.observableArrayList("Software Engineering", "Data Science", "Accounting", "Nursing"));
+        gpaField = new TextField();
+        imagePathField = new TextField();
+        imagePathField.setEditable(false);
+
+        profilePreview = new ImageView();
+        profilePreview.setFitWidth(160);
+        profilePreview.setFitHeight(160);
+        profilePreview.setPreserveRatio(true);
+        StackPane imageFrame = new StackPane(profilePreview);
+        imageFrame.getStyleClass().add("image-frame");
+
+        Button chooseImage = new Button("Choose Image");
+        chooseImage.setOnAction(event -> chooseImage());
+
+        GridPane grid = new GridPane();
+        grid.getStyleClass().add("form-grid");
+        grid.addRow(0, new Label("Student ID"), idField);
+        grid.addRow(1, new Label("First Name"), firstNameField);
+        grid.addRow(2, new Label("Last Name"), lastNameField);
+        grid.addRow(3, new Label("Department"), departmentBox);
+        grid.addRow(4, new Label("Major"), majorBox);
+        grid.addRow(5, new Label("GPA"), gpaField);
+        grid.addRow(6, new Label("Profile Image"), imagePathField);
+        grid.add(chooseImage, 1, 7);
+
+        Button add = new Button("Add");
+        add.getStyleClass().add("primary-button");
+        add.setOnAction(event -> saveStudent(false));
+        Button update = new Button("Update");
+        update.setOnAction(event -> saveStudent(true));
+        Button delete = new Button("Delete");
+        delete.getStyleClass().add("danger-button");
+        delete.setOnAction(event -> deleteSelectedStudent());
+        Button clear = new Button("Clear");
+        clear.setOnAction(event -> clearForm());
+        ToggleButton themeToggle = new ToggleButton("Dark Theme");
+        themeToggle.setOnAction(event -> toggleTheme());
+
+        HBox actions = new HBox(10, add, update, delete, clear);
+        actions.setAlignment(Pos.CENTER_LEFT);
+
+        VBox form = new VBox(14, new Label("Student Details"), imageFrame, grid, actions, themeToggle);
+        form.getStyleClass().add("form-panel");
+        form.setPrefWidth(360);
+        return form;
+    }
+
+    private void populateForm(Student student) {
+        if (student == null) {
+            return;
+        }
+        idField.setText(student.getID());
+        firstNameField.setText(student.getFirstName());
+        lastNameField.setText(student.getLastName());
+        departmentBox.setValue(student.getDepartment());
+        majorBox.setValue(student.getMajor());
+        gpaField.setText(student.getGpa());
+        imagePathField.setText(student.getImagePath());
+        updatePreview(student.getImagePath());
+    }
+
+    private void saveStudent(boolean updateExisting) {
+        String validation = validateStudentForm();
+        if (validation != null) {
+            showAlert(Alert.AlertType.ERROR, "Validation Error", validation);
+            return;
+        }
+
+        Student existing = findStudentById(clean(idField.getText()));
+        if (updateExisting) {
+            Student selected = studentTable.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert(Alert.AlertType.WARNING, "No Selection", "Select a student before updating.");
+                return;
+            }
+            if (existing != null && existing != selected) {
+                showAlert(Alert.AlertType.ERROR, "Duplicate ID", "Another student already uses this ID.");
+                return;
+            }
+            copyFormIntoStudent(selected);
+            studentTable.refresh();
+            updateStatus("Updated student " + selected.getID() + ".");
+            return;
+        }
+
+        if (existing != null) {
+            showAlert(Alert.AlertType.ERROR, "Duplicate ID", "A student with this ID already exists.");
+            return;
+        }
+        Student student = new Student();
+        copyFormIntoStudent(student);
+        students.add(student);
+        clearForm();
+        updateStatus("Added student " + student.getID() + ".");
+    }
+
+    private void copyFormIntoStudent(Student student) {
+        student.setID(clean(idField.getText()));
+        student.setFirstName(clean(firstNameField.getText()));
+        student.setLastName(clean(lastNameField.getText()));
+        student.setDepartment(departmentBox.getValue());
+        student.setMajor(majorBox.getValue());
+        student.setGpa(clean(gpaField.getText()));
+        student.setImagePath(clean(imagePathField.getText()));
+    }
+
+    private String validateStudentForm() {
+        if (isBlank(idField.getText()) || isBlank(firstNameField.getText()) || isBlank(lastNameField.getText())
+                || departmentBox.getValue() == null || majorBox.getValue() == null || isBlank(gpaField.getText())) {
+            return "Student ID, name, department, major, and GPA are required.";
+        }
+        try {
+            double gpa = Double.parseDouble(clean(gpaField.getText()));
+            if (gpa < 0 || gpa > 4) {
+                return "GPA must be between 0.0 and 4.0.";
+            }
+        } catch (NumberFormatException exception) {
+            return "GPA must be a number.";
+        }
+        return null;
+    }
+
+    private void deleteSelectedStudent() {
+        Student selected = studentTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showAlert(Alert.AlertType.WARNING, "No Selection", "Select a student before deleting.");
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Delete " + selected.getFirstName() + " " + selected.getLastName() + "?", ButtonType.CANCEL, ButtonType.OK);
+        styleDialog(confirm.getDialogPane());
+        confirm.setHeaderText("Confirm Delete");
+        confirm.showAndWait().filter(ButtonType.OK::equals).ifPresent(button -> {
+            students.remove(selected);
+            clearForm();
+            updateStatus("Deleted student " + selected.getID() + ".");
+        });
+    }
+
+    private void chooseImage() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Choose Student Profile Image");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+        File selected = chooser.showOpenDialog(getWindow());
+        if (selected != null) {
+            imagePathField.setText(selected.getAbsolutePath());
+            updatePreview(selected.getAbsolutePath());
+        }
+    }
+
+    private void updatePreview(String path) {
+        if (isBlank(path)) {
+            profilePreview.setImage(null);
+            return;
+        }
+        try {
+            profilePreview.setImage(new Image(new File(path).toURI().toString(), true));
+        } catch (IllegalArgumentException exception) {
+            profilePreview.setImage(null);
+        }
+    }
+
+    private void applyFilters() {
+        String department = filterDepartmentBox.getValue();
+        String major = filterMajorBox.getValue();
+        filteredStudents.setPredicate(student -> {
+            boolean departmentMatches = department == null || department.startsWith("All") || department.equals(student.getDepartment());
+            boolean majorMatches = major == null || major.startsWith("All") || major.equals(student.getMajor());
+            return departmentMatches && majorMatches;
+        });
+    }
+
+    private void exportCsv() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Export Student Report");
+        chooser.setInitialFileName("student-report.csv");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+        File file = chooser.showSaveDialog(getWindow());
+        if (file == null) {
+            return;
+        }
+
+        try (BufferedWriter writer = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8)) {
+            writer.write("ID,First Name,Last Name,Department,Major,GPA,Profile Image");
+            writer.newLine();
+            for (Student student : filteredStudents) {
+                writer.write(csv(student.getID()) + "," + csv(student.getFirstName()) + "," + csv(student.getLastName()) + ","
+                        + csv(student.getDepartment()) + "," + csv(student.getMajor()) + "," + csv(student.getGpa()) + ","
+                        + csv(student.getImagePath()));
+                writer.newLine();
+            }
+            updateStatus("Exported " + filteredStudents.size() + " student records to " + file.getName() + ".");
+        } catch (IOException exception) {
+            showAlert(Alert.AlertType.ERROR, "Export Failed", "Unable to write the CSV report: " + exception.getMessage());
+        }
+    }
+
+    private void clearForm() {
+        idField.clear();
+        firstNameField.clear();
+        lastNameField.clear();
+        departmentBox.getSelectionModel().clearSelection();
+        majorBox.getSelectionModel().clearSelection();
+        gpaField.clear();
+        imagePathField.clear();
+        profilePreview.setImage(null);
+        studentTable.getSelectionModel().clearSelection();
+    }
+
+    private Student findStudentById(String id) {
+        return students.stream()
+                .filter(student -> student.getID().equalsIgnoreCase(id))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void toggleTheme() {
+        if (root.getStyleClass().contains(DARK_THEME)) {
+            root.getStyleClass().remove(DARK_THEME);
+            root.getStyleClass().add(LIGHT_THEME);
+        } else {
+            root.getStyleClass().remove(LIGHT_THEME);
+            root.getStyleClass().add(DARK_THEME);
+        }
+    }
+
+    private void showHelp() {
+        showAlert(Alert.AlertType.INFORMATION, "Usage Notes",
+                "Use the Records menu or form buttons to add, update, and delete students.\n"
+                        + "Filters affect the table and the CSV report export.\n"
+                        + "Profile images are stored as local file paths in this prototype.\n"
+                        + "Azure SQL and Blob Storage can replace the in-memory lists when credentials and schema are ready.");
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String message) {
+        Alert alert = new Alert(type, message, ButtonType.OK);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        styleDialog(alert.getDialogPane());
+        alert.showAndWait();
+    }
+
+    private void styleDialog(DialogPane dialogPane) {
+        dialogPane.getStylesheets().add(HelloApplication.class.getResource("styles.css").toExternalForm());
+        dialogPane.getStyleClass().add(root.getStyleClass().contains(DARK_THEME) ? DARK_THEME : LIGHT_THEME);
+    }
+
+    private void updateStatus(String text) {
+        if (statusLabel != null) {
+            statusLabel.setText(text);
+        }
+    }
+
+    private Window getWindow() {
+        return root.getScene().getWindow();
+    }
+
+    private String csv(String value) {
+        String escaped = value == null ? "" : value.replace("\"", "\"\"");
+        return "\"" + escaped + "\"";
+    }
+
+    private String clean(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

@@ -25,8 +25,11 @@ public class HelloApplication extends Application {
             e.printStackTrace();
         }
         FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("hello-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 320, 240);
-        stage.setTitle("Hello!");
+        Scene scene = new Scene(fxmlLoader.load(), 1280, 760);
+        scene.getStylesheets().add(HelloApplication.class.getResource("styles.css").toExternalForm());
+        stage.setMinWidth(980);
+        stage.setMinHeight(660);
+        stage.setTitle("Smart Student Management System");
         stage.setScene(scene);
         stage.show();
     }
