@@ -5,7 +5,8 @@ package org.csc311.capstone.models;
  */
 public class Staff {
 
-    private String ID,jobType,imgURL,email,firstName,lastName,department, password;
+
+    private String ID,jobType,imgURL,email,firstName,lastName,department, password, passwordHash;
 
     public String getID() {
         return ID;
@@ -68,4 +69,12 @@ public class Staff {
     }
 
     public void setPassword(String password) { this.password = password; }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }
