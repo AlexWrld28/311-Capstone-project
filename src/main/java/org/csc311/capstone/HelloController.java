@@ -64,6 +64,7 @@ public class HelloController {
     private Button deleteButton;
     private MenuItem updateMenuItem;
     private MenuItem deleteMenuItem;
+    private TextField searchField;
     private TextField idField;
     private TextField firstNameField;
     private TextField lastNameField;
@@ -297,6 +298,12 @@ public class HelloController {
     }
 
     private Node buildToolbar() {
+        searchField = new TextField();
+        searchField.setPromptText("Search by ID, name, department, major, or GPA");
+        searchField.getStyleClass().add("search-field");
+        searchField.setPrefWidth(400);
+
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> applyFilters());
         filterDepartmentBox = new ComboBox<>(FXCollections.observableArrayList("All Departments", "Computer Science", "Mathematics", "Business", "Health Sciences"));
         filterDepartmentBox.getSelectionModel().selectFirst();
         filterMajorBox = new ComboBox<>(FXCollections.observableArrayList("All Majors", "Software Engineering", "Data Science", "Accounting", "Nursing"));
@@ -304,6 +311,7 @@ public class HelloController {
 
         Button clearFilters = new Button("Clear Filters");
         clearFilters.setOnAction(event -> {
+            searchField.clear();
             filterDepartmentBox.getSelectionModel().selectFirst();
             filterMajorBox.getSelectionModel().selectFirst();
         });
@@ -318,7 +326,7 @@ public class HelloController {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox toolbar = new HBox(10, filterDepartmentBox, filterMajorBox, clearFilters, spacer, count);
+        HBox toolbar = new HBox(10, searchField, filterDepartmentBox, filterMajorBox, clearFilters, spacer, count);
         toolbar.getStyleClass().add("toolbar");
         toolbar.setAlignment(Pos.CENTER_LEFT);
         return toolbar;
@@ -494,12 +502,23 @@ public class HelloController {
     }
 
     private void applyFilters() {
+        String searchText = searchField == null ? "" : clean(searchField.getText().toLowerCase());
         String department = filterDepartmentBox.getValue();
         String major = filterMajorBox.getValue();
+
         filteredStudents.setPredicate(student -> {
+            boolean searchMatches =
+                    searchText.isEmpty()
+                            || student.getID().toLowerCase().contains(searchText)
+                            || student.getFirstName().toLowerCase().contains(searchText)
+                            || student.getLastName().toLowerCase().contains(searchText)
+                            || student.getDepartment().toLowerCase().contains(searchText)
+                            || student.getMajor().toLowerCase().contains(searchText)
+                            || student.getGpa().toLowerCase().contains(searchText);
+
             boolean departmentMatches = department == null || department.startsWith("All") || department.equals(student.getDepartment());
             boolean majorMatches = major == null || major.startsWith("All") || major.equals(student.getMajor());
-            return departmentMatches && majorMatches;
+            return searchMatches && departmentMatches && majorMatches;
         });
     }
 
