@@ -338,6 +338,11 @@ public class HelloController {
 
     private Node buildStudentForm() {
         idField = new TextField();
+        idField.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*")) {
+                idField.setText(newValue.replaceAll("[^\\d]", ""));
+            }
+        });
         firstNameField = new TextField();
         lastNameField = new TextField();
         departmentBox = new ComboBox<>(FXCollections.observableArrayList("Computer Science", "Mathematics", "Business", "Health Sciences"));
@@ -450,8 +455,8 @@ public class HelloController {
 
     private void copyFormIntoStudent(Student student) {
         student.setID(clean(idField.getText()));
-        student.setFirstName(clean(firstNameField.getText()));
-        student.setLastName(clean(lastNameField.getText()));
+        student.setFirstName(capitalize(clean(firstNameField.getText())));
+        student.setLastName(capitalize(clean(lastNameField.getText())));
         student.setDepartment(departmentBox.getValue());
         student.setMajor(majorBox.getValue());
         student.setGpa(clean(gpaField.getText()));
@@ -598,6 +603,23 @@ public class HelloController {
         if (themeToggle != null) {
         themeToggle.setText(isDark ? "Light Theme" : "Dark Theme");
         }
+    }
+
+    private String capitalize(String text) {
+        if (isBlank(text)) return text;
+
+        String[] parts = text.toLowerCase().split(" ");
+        StringBuilder result = new StringBuilder();
+
+        for (String part : parts) {
+            if (!part.isEmpty()) {
+                result.append(Character.toUpperCase(part.charAt(0)))
+                        .append(part.substring(1))
+                        .append(" ");
+            }
+        }
+
+        return result.toString().trim();
     }
 
     private void showHelp() {
