@@ -45,7 +45,8 @@ public class DBHandler {
         var department = result.getString("department");
         var major = result.getString("major");
         var gpa = result.getString("gpa");
-        return new Student(ID,firstName,lastName,department,major,gpa);
+        var imagePath = result.getString("imagePath");
+        return new Student(ID,firstName,lastName,department,major,gpa,imagePath);
 
     }
 
