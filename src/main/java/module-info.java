@@ -3,6 +3,9 @@ module org.csc311.capstone {
     requires javafx.fxml;
     requires java.sql;
     requires com.opencsv;
+    requires bcrypt;
+    requires com.github.librepdf.openpdf;
+    requires java.desktop;
 
 
     opens org.csc311.capstone to javafx.fxml;
