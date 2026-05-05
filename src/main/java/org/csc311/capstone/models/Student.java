@@ -1,19 +1,52 @@
 package org.csc311.capstone.models;
 
-public class Student {
-    private String ID, firstName, lastName, department, major, gpa, imagePath;
+import com.opencsv.bean.CsvBindAndJoinByPosition;
+import com.opencsv.bean.CsvBindByName;
+import com.opencsv.bean.CsvBindByPosition;
 
-    public Student() {
-    }
+import java.io.Serializable;
 
-    public Student(String ID, String firstName, String lastName, String department, String major, String gpa, String imagePath) {
-        this.ID = ID;
+/**
+ * @author Charles Gonzalez Jr
+ */
+public class Student{
+
+    @CsvBindByPosition(position = 0)
+    @CsvBindByName(column = "ID")
+    String ID;
+
+    @CsvBindByPosition(position = 1)
+    @CsvBindByName(column = "First Name")
+    String firstName;
+
+    @CsvBindByPosition(position = 2)
+    @CsvBindByName(column = "Last Name")
+    String lastName;
+
+    @CsvBindByPosition(position = 3)
+    @CsvBindByName(column = "Department")
+    String department;
+
+    @CsvBindByPosition(position = 4)
+    @CsvBindByName(column = "Major")
+    String major;
+
+    @CsvBindByPosition(position = 5)
+    @CsvBindByName(column = "GPA")
+    String gpa;
+
+    public Student(String id, String firstName, String lastName, String department, String major, String gpa) {
+        this.ID = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.department = department;
         this.major = major;
         this.gpa = gpa;
-        this.imagePath = imagePath;
+
+    }
+
+    public Student() {
+
     }
 
     public String getID() {
@@ -62,13 +95,5 @@ public class Student {
 
     public void setGpa(String gpa) {
         this.gpa = gpa;
-    }
-
-    public String getImagePath() {
-        return imagePath;
-    }
-
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
     }
 }

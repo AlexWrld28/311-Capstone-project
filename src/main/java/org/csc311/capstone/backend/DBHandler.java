@@ -140,7 +140,7 @@ public class DBHandler {
         var major = result.getString("major");
         var gpa = result.getString("gpa");
         var imagePath = result.getString("imagePath");
-        return new Student(ID,firstName,lastName,department,major,gpa,imagePath);
+        return new Student(ID,firstName,lastName,department,major,gpa);
 
     }
 

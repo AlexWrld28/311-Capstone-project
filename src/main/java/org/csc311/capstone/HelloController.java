@@ -24,8 +24,6 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -72,8 +70,6 @@ public class HelloController {
     private ComboBox<String> departmentBox;
     private ComboBox<String> majorBox;
     private TextField gpaField;
-    private TextField imagePathField;
-    private ImageView profilePreview;
     private ComboBox<String> filterDepartmentBox;
     private ComboBox<String> filterMajorBox;
     private Label statusLabel;
@@ -101,9 +97,9 @@ public class HelloController {
 
     private void seedStudents() {
         students.addAll(
-                new Student("1001", "Maya", "Chen", "Computer Science", "Software Engineering", "3.82", ""),
-                new Student("1002", "Liam", "Patel", "Mathematics", "Data Science", "3.65", ""),
-                new Student("1003", "Sofia", "Garcia", "Business", "Accounting", "3.41", "")
+                new Student("1001", "Maya", "Chen", "Computer Science", "Software Engineering", "3.82"),
+                new Student("1002", "Liam", "Patel", "Mathematics", "Data Science", "3.65"),
+                new Student("1003", "Sofia", "Garcia", "Business", "Accounting", "3.41")
         );
     }
 
@@ -348,18 +344,6 @@ public class HelloController {
         departmentBox = new ComboBox<>(FXCollections.observableArrayList("Computer Science", "Mathematics", "Business", "Health Sciences"));
         majorBox = new ComboBox<>(FXCollections.observableArrayList("Software Engineering", "Data Science", "Accounting", "Nursing"));
         gpaField = new TextField();
-        imagePathField = new TextField();
-        imagePathField.setEditable(false);
-
-        profilePreview = new ImageView();
-        profilePreview.setFitWidth(160);
-        profilePreview.setFitHeight(160);
-        profilePreview.setPreserveRatio(true);
-        StackPane imageFrame = new StackPane(profilePreview);
-        imageFrame.getStyleClass().add("image-frame");
-
-        Button chooseImage = new Button("Choose Image");
-        chooseImage.setOnAction(event -> chooseImage());
 
         GridPane grid = new GridPane();
         grid.getStyleClass().add("form-grid");
@@ -369,8 +353,6 @@ public class HelloController {
         grid.addRow(3, new Label("Department"), departmentBox);
         grid.addRow(4, new Label("Major"), majorBox);
         grid.addRow(5, new Label("GPA"), gpaField);
-        grid.addRow(6, new Label("Profile Image"), imagePathField);
-        grid.add(chooseImage, 1, 7);
 
         addButton = new Button("Add Student");
         addButton.getStyleClass().add("primary-button");
@@ -396,7 +378,7 @@ public class HelloController {
         HBox actions = new HBox(10, addButton, deleteButton, clear);
         actions.setAlignment(Pos.CENTER_LEFT);
 
-        VBox form = new VBox(14, new Label("Student Details"), imageFrame, grid, actions, themeToggle);
+        VBox form = new VBox(14, new Label("Student Details"), grid, actions, themeToggle);
         form.getStyleClass().add("form-panel");
         form.setPrefWidth(330);
         form.setMinWidth(330);
@@ -414,8 +396,6 @@ public class HelloController {
         departmentBox.setValue(student.getDepartment());
         majorBox.setValue(student.getMajor());
         gpaField.setText(student.getGpa());
-        imagePathField.setText(student.getImagePath());
-        updatePreview(student.getImagePath());
     }
 
     private void saveStudent(boolean updateExisting) {
@@ -460,7 +440,6 @@ public class HelloController {
         student.setDepartment(departmentBox.getValue());
         student.setMajor(majorBox.getValue());
         student.setGpa(clean(gpaField.getText()));
-        student.setImagePath(clean(imagePathField.getText()));
     }
 
     private String validateStudentForm() {
@@ -495,29 +474,6 @@ public class HelloController {
         });
     }
 
-    private void chooseImage() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Choose Student Profile Image");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg", "*.gif"));
-        File selected = chooser.showOpenDialog(getWindow());
-        if (selected != null) {
-            imagePathField.setText(selected.getAbsolutePath());
-            updatePreview(selected.getAbsolutePath());
-        }
-    }
-
-    private void updatePreview(String path) {
-        if (isBlank(path)) {
-            profilePreview.setImage(null);
-            return;
-        }
-        try {
-            profilePreview.setImage(new Image(new File(path).toURI().toString(), true));
-        } catch (IllegalArgumentException exception) {
-            profilePreview.setImage(null);
-        }
-    }
-
     private void applyFilters() {
         String searchText = searchField == null ? "" : clean(searchField.getText().toLowerCase());
         String department = filterDepartmentBox.getValue();
@@ -548,12 +504,11 @@ public class HelloController {
         }
 
         try (BufferedWriter writer = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8)) {
-            writer.write("ID,First Name,Last Name,Department,Major,GPA,Profile Image");
+            writer.write("ID,First Name,Last Name,Department,Major,GPA");
             writer.newLine();
             for (Student student : filteredStudents) {
                 writer.write(csv(student.getID()) + "," + csv(student.getFirstName()) + "," + csv(student.getLastName()) + ","
-                        + csv(student.getDepartment()) + "," + csv(student.getMajor()) + "," + csv(student.getGpa()) + ","
-                        + csv(student.getImagePath()));
+                        + csv(student.getDepartment()) + "," + csv(student.getMajor()) + "," + csv(student.getGpa()));
                 writer.newLine();
             }
             updateStatus("Exported " + filteredStudents.size() + " student records to " + file.getName() + ".");
@@ -570,8 +525,6 @@ public class HelloController {
         departmentBox.getSelectionModel().clearSelection();
         majorBox.getSelectionModel().clearSelection();
         gpaField.clear();
-        imagePathField.clear();
-        profilePreview.setImage(null);
         studentTable.getSelectionModel().clearSelection();
         addButton.setText("Add Student");
     }
@@ -626,7 +579,6 @@ public class HelloController {
         showAlert(Alert.AlertType.INFORMATION, "Usage Notes",
                 "Use the Records menu or form buttons to add, update, and delete students.\n"
                         + "Filters affect the table and the CSV report export.\n"
-                        + "Profile images are stored as local file paths in this prototype.\n"
                         + "Azure SQL and Blob Storage can replace the in-memory lists when credentials and schema are ready.");
     }
 
