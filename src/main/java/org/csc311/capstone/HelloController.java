@@ -60,6 +60,10 @@ public class HelloController {
     private final FilteredList<Student> filteredStudents = new FilteredList<>(students, student -> true);
 
     private TableView<Student> studentTable;
+    private Button updateButton;
+    private Button deleteButton;
+    private MenuItem updateMenuItem;
+    private MenuItem deleteMenuItem;
     private TextField idField;
     private TextField firstNameField;
     private TextField lastNameField;
@@ -215,13 +219,15 @@ public class HelloController {
         MenuItem add = new MenuItem("Add Student");
         add.setAccelerator(KeyCombination.keyCombination("Shortcut+N"));
         add.setOnAction(event -> saveStudent(false));
-        MenuItem update = new MenuItem("Update Selected");
-        update.setAccelerator(KeyCombination.keyCombination("Shortcut+S"));
-        update.setOnAction(event -> saveStudent(true));
-        MenuItem delete = new MenuItem("Delete Selected");
-        delete.setAccelerator(KeyCombination.keyCombination("Shortcut+D"));
-        delete.setOnAction(event -> deleteSelectedStudent());
-        records.getItems().addAll(add, update, delete);
+        updateMenuItem = new MenuItem("Update Selected");
+        updateMenuItem.setAccelerator(KeyCombination.keyCombination("Shortcut+S"));
+        updateMenuItem.setOnAction(event -> saveStudent(true));
+        updateMenuItem.setDisable(true);
+        deleteMenuItem = new MenuItem("Delete Selected");
+        deleteMenuItem.setAccelerator(KeyCombination.keyCombination("Shortcut+D"));
+        deleteMenuItem.setOnAction(event -> deleteSelectedStudent());
+        deleteMenuItem.setDisable(true);
+        records.getItems().addAll(add, updateMenuItem, deleteMenuItem);
 
         Menu reports = new Menu("Reports");
         MenuItem csv = new MenuItem("Export Filtered CSV");
@@ -261,7 +267,17 @@ public class HelloController {
                 column("Major", "major"),
                 column("GPA", "gpa")
         );
-        studentTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, selected) -> populateForm(selected));
+        studentTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, selected) -> {
+            populateForm(selected);
+
+            boolean hasSelection = selected != null;
+
+            updateMenuItem.setDisable(!hasSelection);
+            deleteMenuItem.setDisable(!hasSelection);
+
+            updateButton.setDisable(!hasSelection);
+            deleteButton.setDisable(!hasSelection);
+        });
 
         VBox tablePanel = new VBox(12, buildToolbar(), studentTable);
         tablePanel.getStyleClass().add("table-panel");
@@ -342,17 +358,19 @@ public class HelloController {
         Button add = new Button("Add");
         add.getStyleClass().add("primary-button");
         add.setOnAction(event -> saveStudent(false));
-        Button update = new Button("Update");
-        update.setOnAction(event -> saveStudent(true));
-        Button delete = new Button("Delete");
-        delete.getStyleClass().add("danger-button");
-        delete.setOnAction(event -> deleteSelectedStudent());
+        updateButton = new Button("Update");
+        updateButton.setOnAction(event -> saveStudent(true));
+        updateButton.setDisable(true);
+        deleteButton = new Button("Delete");
+        deleteButton.getStyleClass().add("danger-button");
+        deleteButton.setOnAction(event -> deleteSelectedStudent());
+        deleteButton.setDisable(true);
         Button clear = new Button("Clear");
         clear.setOnAction(event -> clearForm());
         ToggleButton themeToggle = new ToggleButton("Dark Theme");
         themeToggle.setOnAction(event -> toggleTheme());
 
-        HBox actions = new HBox(10, add, update, delete, clear);
+        HBox actions = new HBox(10, add, updateButton, deleteButton, clear);
         actions.setAlignment(Pos.CENTER_LEFT);
 
         VBox form = new VBox(14, new Label("Student Details"), imageFrame, grid, actions, themeToggle);
