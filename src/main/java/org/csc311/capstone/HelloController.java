@@ -65,6 +65,7 @@ public class HelloController {
     private MenuItem updateMenuItem;
     private MenuItem deleteMenuItem;
     private TextField searchField;
+    private ToggleButton themeToggle;
     private TextField idField;
     private TextField firstNameField;
     private TextField lastNameField;
@@ -299,9 +300,9 @@ public class HelloController {
 
     private Node buildToolbar() {
         searchField = new TextField();
-        searchField.setPromptText("Search by ID, name, department, major, or GPA");
+        searchField.setPromptText("Search by ID, name, or GPA");
         searchField.getStyleClass().add("search-field");
-        searchField.setPrefWidth(400);
+        searchField.setPrefWidth(295);
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> applyFilters());
         filterDepartmentBox = new ComboBox<>(FXCollections.observableArrayList("All Departments", "Computer Science", "Mathematics", "Business", "Health Sciences"));
@@ -375,7 +376,8 @@ public class HelloController {
         deleteButton.setDisable(true);
         Button clear = new Button("Clear");
         clear.setOnAction(event -> clearForm());
-        ToggleButton themeToggle = new ToggleButton("Dark Theme");
+        themeToggle = new ToggleButton();
+        updateThemeButtonText();
         themeToggle.setOnAction(event -> toggleTheme());
 
         HBox actions = new HBox(10, add, updateButton, deleteButton, clear);
@@ -383,7 +385,8 @@ public class HelloController {
 
         VBox form = new VBox(14, new Label("Student Details"), imageFrame, grid, actions, themeToggle);
         form.getStyleClass().add("form-panel");
-        form.setPrefWidth(360);
+        form.setPrefWidth(330);
+        form.setMinWidth(330);
         return form;
     }
 
@@ -512,8 +515,6 @@ public class HelloController {
                             || student.getID().toLowerCase().contains(searchText)
                             || student.getFirstName().toLowerCase().contains(searchText)
                             || student.getLastName().toLowerCase().contains(searchText)
-                            || student.getDepartment().toLowerCase().contains(searchText)
-                            || student.getMajor().toLowerCase().contains(searchText)
                             || student.getGpa().toLowerCase().contains(searchText);
 
             boolean departmentMatches = department == null || department.startsWith("All") || department.equals(student.getDepartment());
@@ -567,12 +568,24 @@ public class HelloController {
     }
 
     private void toggleTheme() {
-        if (root.getStyleClass().contains(DARK_THEME)) {
+        boolean isDark = root.getStyleClass().contains(DARK_THEME);
+
+        if (isDark) {
             root.getStyleClass().remove(DARK_THEME);
             root.getStyleClass().add(LIGHT_THEME);
         } else {
             root.getStyleClass().remove(LIGHT_THEME);
             root.getStyleClass().add(DARK_THEME);
+
+            updateThemeButtonText();
+        }
+    }
+
+    private void updateThemeButtonText() {
+        boolean isDark = root.getStyleClass().contains(DARK_THEME);
+
+        if (themeToggle != null) {
+        themeToggle.setText(isDark ? "Light Theme" : "Dark Theme");
         }
     }
 
