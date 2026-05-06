@@ -529,6 +529,7 @@ GROUP 2:
 * Alex Zirilli
 * Jake Dunn
 * Benji Sanoff-Wiener
+* Charles Gonzalez Jr
 
 ---
 
