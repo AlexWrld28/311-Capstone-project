@@ -141,15 +141,26 @@
     -fx-text-fill: -fx-text-main;
 }
 
-.menu-bar,
-.menu,
-.menu-item {
+.light-theme .menu-bar,
+.light-theme .menu,
+.light-theme .menu-item {
     -fx-background-color: -fx-panel-bg;
 }
 
-.menu .label,
-.menu-item .label {
+.light-theme .menu .label,
+.light-theme .menu-item .label {
     -fx-text-fill: -fx-text-main;
+}
+
+.dark-theme .menu-bar,
+.dark-theme .menu,
+.dark-theme .menu-item {
+    -fx-background-color: #232731;
+}
+
+.dark-theme .menu .label,
+.dark-theme .menu-item .label {
+    -fx-text-fill: #eef2f8;
 }
 
 .student-table {

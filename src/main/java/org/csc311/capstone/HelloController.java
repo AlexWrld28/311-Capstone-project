@@ -34,6 +34,9 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
+import org.csc311.capstone.backend.DBHandler;
+import org.csc311.capstone.models.LoginDTO;
+import org.csc311.capstone.models.RegisterDTO;
 import org.csc311.capstone.models.Staff;
 import org.csc311.capstone.models.Student;
 
@@ -42,9 +45,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
 
 public class HelloController {
     private static final String LIGHT_THEME = "light-theme";
@@ -54,7 +54,6 @@ public class HelloController {
     private BorderPane root;
 
     private final ObservableList<Student> students = FXCollections.observableArrayList();
-    private final Map<String, Staff> users = new LinkedHashMap<>();
     private final FilteredList<Student> filteredStudents = new FilteredList<>(students, student -> true);
 
     private TableView<Student> studentTable;
@@ -75,32 +74,16 @@ public class HelloController {
     private Label statusLabel;
     private Staff currentUser;
 
+    private final DBHandler dbHandler = new DBHandler(true);
+
     @FXML
     private void initialize() {
-        seedUsers();
-        seedStudents();
         root.getStyleClass().add(LIGHT_THEME);
         showLoginView();
     }
 
-    private void seedUsers() {
-        Staff admin = new Staff();
-        admin.setID("A001");
-        admin.setFirstName("Demo");
-        admin.setLastName("Admin");
-        admin.setEmail("admin@school.edu");
-        admin.setPassword("admin123");
-        admin.setJobType("Administrator");
-        admin.setDepartment("Administration");
-        users.put(admin.getEmail().toLowerCase(), admin);
-    }
-
-    private void seedStudents() {
-        students.addAll(
-                new Student("1001", "Maya", "Chen", "Computer Science", "Software Engineering", "3.82"),
-                new Student("1002", "Liam", "Patel", "Mathematics", "Data Science", "3.65"),
-                new Student("1003", "Sofia", "Garcia", "Business", "Accounting", "3.41")
-        );
+    private void loadStudentsFromDatabase() {
+        students.setAll(dbHandler.getAllStudents());
     }
 
     private void showLoginView() {
@@ -163,13 +146,16 @@ public class HelloController {
     }
 
     private void loginUser(String email, String password, Label error) {
-        Staff user = users.get(clean(email).toLowerCase());
-        if (user == null || !Objects.equals(user.getPassword(), password)) {
+        LoginDTO dto = new LoginDTO(clean(email).toLowerCase(), password);
+
+        var userResult = dbHandler.login(dto);
+
+        if (userResult.isEmpty()) {
             error.setText("Enter a valid staff email and password.");
             return;
         }
 
-        currentUser = user;
+        currentUser = userResult.get();
         showDashboard();
     }
 
@@ -179,30 +165,35 @@ public class HelloController {
             error.setText("All registration fields are required.");
             return;
         }
+
         String normalizedEmail = clean(email.getText()).toLowerCase();
         if (!normalizedEmail.contains("@")) {
             error.setText("Enter a valid email address.");
             return;
         }
-        if (users.containsKey(normalizedEmail)) {
+
+        RegisterDTO dto = new RegisterDTO(
+                normalizedEmail,
+                password.getText(),
+                clean(firstName.getText()),
+                clean(lastName.getText()),
+
+                "Student Services"
+        );
+
+        boolean registered = dbHandler.register(dto);
+
+        if (!registered) {
             error.setText("An account already exists for this email.");
             return;
         }
 
-        Staff staff = new Staff();
-        staff.setID("S%03d".formatted(users.size() + 1));
-        staff.setFirstName(clean(firstName.getText()));
-        staff.setLastName(clean(lastName.getText()));
-        staff.setEmail(normalizedEmail);
-        staff.setPassword(password.getText());
-        staff.setJobType(role.getValue());
-        staff.setDepartment("Student Services");
-        users.put(normalizedEmail, staff);
-        currentUser = staff;
-        showDashboard();
+        loginUser(normalizedEmail, password.getText(), error);
     }
 
     private void showDashboard() {
+        loadStudentsFromDatabase();
+
         root.setTop(buildMenuBar());
         root.setCenter(buildStudentWorkspace());
         statusLabel = new Label();
@@ -334,11 +325,6 @@ public class HelloController {
 
     private Node buildStudentForm() {
         idField = new TextField();
-        idField.textProperty().addListener((obs, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                idField.setText(newValue.replaceAll("[^\\d]", ""));
-            }
-        });
         firstNameField = new TextField();
         lastNameField = new TextField();
         departmentBox = new ComboBox<>(FXCollections.observableArrayList("Computer Science", "Mathematics", "Business", "Health Sciences"));
@@ -417,6 +403,12 @@ public class HelloController {
                 return;
             }
             copyFormIntoStudent(selected);
+
+            if (!dbHandler.updateStudent(selected)) {
+                showAlert(Alert.AlertType.ERROR, "Update Failed", "Could not update student in the database.");
+                return;
+            }
+
             studentTable.refresh();
             updateStatus("Updated student " + selected.getID() + ".");
             return;
@@ -428,6 +420,11 @@ public class HelloController {
         }
         Student student = new Student();
         copyFormIntoStudent(student);
+        if (!dbHandler.addStudent(student)) {
+            showAlert(Alert.AlertType.ERROR, "Add Failed", "Could not add student to the database.");
+            return;
+        }
+
         students.add(student);
         clearForm();
         updateStatus("Added student " + student.getID() + ".");
@@ -468,6 +465,12 @@ public class HelloController {
         styleDialog(confirm.getDialogPane());
         confirm.setHeaderText("Confirm Delete");
         confirm.showAndWait().filter(ButtonType.OK::equals).ifPresent(button -> {
+
+            if (!dbHandler.deleteStudent(selected.getID())) {
+                showAlert(Alert.AlertType.ERROR, "Delete Failed", "Could not delete student from the database.");
+                return;
+            }
+
             students.remove(selected);
             clearForm();
             updateStatus("Deleted student " + selected.getID() + ".");

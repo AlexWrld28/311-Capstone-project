@@ -20,6 +20,19 @@ CREATE TABLE IF NOT EXISTS student (
     gpa VARCHAR(10)
     );
 
+MERGE INTO staff (id, first_name, last_name, email, department, job_type, img_url, password_hash)
+    KEY(id)
+    VALUES (
+    'STFADMIN01',
+    'Demo',
+    'Admin',
+    'admin@school.edu',
+    'Administration',
+    'Administrator',
+    NULL,
+    '$2a$12$Ao24gngCgv7EINhIWE.v6.NeedPE4wurXHCKKZZn4Aq1TPc/npGVm'
+    );
+
 -- Insert 50 Example Students
 MERGE INTO student (id, first_name, last_name, department, major, gpa) KEY(id) VALUES('STU1001', 'Elizabeth', 'Lopez', 'Psychology', 'Cognitive Science', '2.53');
 MERGE INTO student (id, first_name, last_name, department, major, gpa) KEY(id) VALUES('STU1002', 'Robert', 'Smith', 'History', 'American History', '3.42');

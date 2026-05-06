@@ -139,7 +139,7 @@ public class DBHandler {
         var department = result.getString("department");
         var major = result.getString("major");
         var gpa = result.getString("gpa");
-        var imagePath = result.getString("imagePath");
+        //var imagePath = result.getString("imagePath");
         return new Student(ID,firstName,lastName,department,major,gpa);
 
     }
@@ -206,5 +206,52 @@ public class DBHandler {
         }
 
         return returnList;
+    }
+
+    public boolean addStudent(Student student) {
+        try (var connn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            var stmt = connn.prepareStatement(
+                    "INSERT INTO student (id, first_name, last_name, department, major, gpa) VALUES (?, ?, ?, ?, ?, ?)"
+            );
+            stmt.setString(1, student.getID());
+            stmt.setString(2, student.getFirstName());
+            stmt.setString(3, student.getLastName());
+            stmt.setString(4, student.getDepartment());
+            stmt.setString(5, student.getMajor());
+            stmt.setString(6, student.getGpa());
+            return stmt.executeUpdate() == 1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean updateStudent(Student student) {
+        try (var conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            var stmt = conn.prepareStatement(
+                    "UPDATE student SET first_name = ?, last_name = ?, department = ?, major = ?, gpa = ? WHERE id = ?"
+            );
+            stmt.setString(1, student.getFirstName());
+            stmt.setString(2, student.getLastName());
+            stmt.setString(3, student.getDepartment());
+            stmt.setString(4, student.getMajor());
+            stmt.setString(5, student.getGpa());
+            stmt.setString(6, student.getID());
+            return stmt.executeUpdate() == 1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean deleteStudent(String id) {
+        try (var conn = DriverManager.getConnection(CONNECTION_URL, USER, PASSWORD)) {
+            var stmt = conn.prepareStatement("DELETE FROM student WHERE id = ?");
+            stmt.setString(1, id);
+            return stmt.executeUpdate() == 1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 }
