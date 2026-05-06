@@ -51,6 +51,52 @@
     -fx-shadow-color: rgba(2, 8, 20, 0.42);
 }
 
+/* Dark mode input text */
+.dark-theme .text-field,
+.dark-theme .password-field {
+    -fx-text-fill: #eef2f8;
+    -fx-prompt-text-fill: #9fb0c8;
+}
+
+/* Dark mode combo box selected value */
+.dark-theme .combo-box,
+.dark-theme .combo-box-base,
+.dark-theme .combo-box .list-cell,
+.dark-theme .combo-box .cell {
+    -fx-text-fill: #eef2f8;
+}
+
+/* ComboBox button cell text */
+.dark-theme .combo-box-base .text {
+    -fx-fill: #eef2f8;
+}
+
+/* ComboBox dropdown arrow */
+.dark-theme .combo-box-base .arrow {
+    -fx-background-color: #eef2f8;
+}
+
+/* ComboBox dropdown list */
+.dark-theme .combo-box-popup .list-view {
+    -fx-background-color: #232731;
+    -fx-control-inner-background: #232731;
+}
+
+.dark-theme .combo-box-popup .list-cell {
+    -fx-background-color: #232731;
+    -fx-text-fill: #eef2f8;
+}
+
+.dark-theme .combo-box-popup .list-cell:hover {
+    -fx-background-color: #334155;
+    -fx-text-fill: #ffffff;
+}
+
+.dark-theme .combo-box-popup .list-cell:selected {
+    -fx-background-color: #3b82f6;
+    -fx-text-fill: #ffffff;
+}
+
 .root,
 .label {
     -fx-text-fill: -fx-text-main;
