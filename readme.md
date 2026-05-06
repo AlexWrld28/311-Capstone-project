@@ -43,6 +43,26 @@ The dashboard provides summary information about the student population:
 * Lowest GPA
 * Students grouped by department
 
+## Student Class Grades
+
+Each student record can now track individual class grades. Selecting a student on the Students page loads that student's class-grade history, including:
+
+* Class code
+* Class name
+* Numeric grade
+* Credit count
+* Academic term
+
+The app aggregates those rows into useful per-student statistics:
+
+* Number of tracked classes
+* Total completed credits
+* Average grade
+* Highest grade
+* Lowest grade
+
+Administrators can add, update, and delete class-grade rows. Staff accounts can view the grade history and statistics but cannot modify them.
+
 ## Student Management
 
 Administrators can:
@@ -168,11 +188,14 @@ src/
 │   │       │   ├── SchemaRepository.java
 │   │       │   ├── ReferenceDataRepository.java
 │   │       │   ├── StudentRepository.java
+│   │       │   ├── StudentGradeRepository.java
 │   │       │   ├── StaffRepository.java
 │   │       │   └── AuditLogRepository.java
 │   │       │
 │   │       ├── models/
 │   │       │   ├── Student.java
+│   │       │   ├── StudentGrade.java
+│   │       │   ├── StudentGradeStats.java
 │   │       │   ├── Staff.java
 │   │       │   ├── AuditLog.java
 │   │       │   ├── DashboardStats.java

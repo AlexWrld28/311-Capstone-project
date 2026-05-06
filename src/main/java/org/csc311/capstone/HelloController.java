@@ -24,6 +24,7 @@ import org.csc311.capstone.services.*;
 import org.csc311.capstone.util.DataExportHandler;
 
 import java.io.File;
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,10 @@ import java.util.Map;
 public class HelloController {
     private static final String LIGHT_THEME = "light-theme";
     private static final String DARK_THEME = "dark-theme";
+    private static final String EMAIL_PATTERN = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+    private static final String PASSWORD_PATTERN = "^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,}$";
+    private static final String PASSWORD_REQUIREMENTS_MESSAGE =
+            "Password must be at least 6 characters and include at least\none capital letter and one special character";
 
     @FXML
     private BorderPane root;
@@ -45,12 +50,14 @@ public class HelloController {
     private Staff currentUser;
 
     private final ObservableList<Student> studentItems = FXCollections.observableArrayList();
+    private final ObservableList<StudentGrade> gradeItems = FXCollections.observableArrayList();
     private final ObservableList<AuditLog> auditLogItems = FXCollections.observableArrayList();
 
     private List<String> departments = new ArrayList<>();
     private List<String> majors = new ArrayList<>();
 
     private TableView<Student> studentTable;
+    private TableView<StudentGrade> gradeTable;
     private TableView<AuditLog> auditLogTable;
 
     private TextField searchField;
@@ -80,6 +87,14 @@ public class HelloController {
     private TextField gpaField;
     private Button addButton;
     private Button deleteButton;
+    private TextField gradeClassNameField;
+    private TextField gradeClassCodeField;
+    private TextField gradeValueField;
+    private TextField gradeCreditsField;
+    private TextField gradeTermField;
+    private Button saveGradeButton;
+    private Button deleteGradeButton;
+    private Label gradeSummaryLabel;
     private Button dashboardNavButton;
     private Button studentsNavButton;
     private Button profileNavButton;
@@ -148,6 +163,8 @@ public class HelloController {
 
         Label error = new Label();
         error.getStyleClass().add("error-label");
+        error.setWrapText(true);
+        error.setMaxWidth(Double.MAX_VALUE);
 
         Button primary = new Button(registrationMode ? "Register" : "Login");
         primary.getStyleClass().add("primary-button");
@@ -218,8 +235,20 @@ public class HelloController {
     }
 
     private void loginUser(String email, String password, Label error) {
+        String normalizedEmail = clean(email).toLowerCase();
+
+        if (!normalizedEmail.matches(EMAIL_PATTERN)) {
+            error.setText("Enter a valid email address.");
+            return;
+        }
+
+        if (password == null || !password.matches(PASSWORD_PATTERN)) {
+            error.setText(PASSWORD_REQUIREMENTS_MESSAGE);
+            return;
+        }
+
         try {
-            Staff user = authService.login(clean(email), password);
+            Staff user = authService.login(normalizedEmail, password);
 
             if (user == null) {
                 error.setText("Enter a valid staff email and password.");
@@ -245,6 +274,11 @@ public class HelloController {
 
         if (!normalizedEmail.contains("@")) {
             error.setText("Enter a valid email address.");
+            return;
+        }
+
+        if (!password.getText().matches(PASSWORD_PATTERN)) {
+            error.setText(PASSWORD_REQUIREMENTS_MESSAGE);
             return;
         }
 
@@ -578,6 +612,7 @@ public class HelloController {
 
         studentTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, selected) -> {
             populateForm(selected);
+            loadGradesForSelectedStudent();
 
             boolean hasSelection = selected != null;
             boolean canModify = isAdmin() && hasSelection;
@@ -610,8 +645,12 @@ public class HelloController {
         VBox.setVgrow(studentTable, Priority.ALWAYS);
 
         Node formPanel = buildStudentForm();
+        Node gradePanel = buildGradePanel();
+        VBox aside = new VBox(16, formPanel, gradePanel);
+        aside.setPrefWidth(390);
+        aside.setMinWidth(360);
 
-        SplitPane contentSplit = new SplitPane(tablePanel, formPanel);
+        SplitPane contentSplit = new SplitPane(tablePanel, aside);
         contentSplit.setDividerPositions(0.72);
         contentSplit.getStyleClass().add("content-split");
 
@@ -850,6 +889,97 @@ public class HelloController {
         return form;
     }
 
+    private Node buildGradePanel() {
+        gradeSummaryLabel = new Label("Select a student to view class grades.");
+        gradeSummaryLabel.getStyleClass().add("summary-label");
+        gradeSummaryLabel.setWrapText(true);
+
+        gradeTable = new TableView<>(gradeItems);
+        gradeTable.getStyleClass().add("student-table");
+        gradeTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        gradeTable.setPrefHeight(220);
+
+        gradeTable.getColumns().addAll(
+                gradeColumn("Class", "classCode"),
+                gradeColumn("Grade", "gradeDisplay"),
+                gradeColumn("Credits", "credits"),
+                gradeColumn("Term", "term")
+        );
+
+        gradeTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, selected) -> {
+            populateGradeForm(selected);
+
+            boolean canModify = isAdmin() && selected != null;
+
+            if (deleteGradeButton != null) {
+                deleteGradeButton.setDisable(!canModify);
+            }
+
+            if (saveGradeButton != null) {
+                saveGradeButton.setText(selected == null ? "Add Grade" : "Update Grade");
+            }
+        });
+
+        gradeClassCodeField = new TextField();
+        gradeClassCodeField.setPromptText("CSC311");
+        gradeClassNameField = new TextField();
+        gradeClassNameField.setPromptText("Class name");
+        gradeValueField = new TextField();
+        gradeValueField.setPromptText("0 - 100");
+        gradeCreditsField = new TextField();
+        gradeCreditsField.setPromptText("Credits");
+        gradeTermField = new TextField();
+        gradeTermField.setPromptText("Fall 2026");
+
+        GridPane grid = new GridPane();
+        grid.getStyleClass().add("form-grid");
+        grid.addRow(0, new Label("Code"), gradeClassCodeField);
+        grid.addRow(1, new Label("Class"), gradeClassNameField);
+        grid.addRow(2, new Label("Grade"), gradeValueField);
+        grid.addRow(3, new Label("Credits"), gradeCreditsField);
+        grid.addRow(4, new Label("Term"), gradeTermField);
+
+        ColumnConstraints labelColumn = new ColumnConstraints();
+        labelColumn.setMinWidth(72);
+        ColumnConstraints fieldColumn = new ColumnConstraints();
+        fieldColumn.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(labelColumn, fieldColumn);
+
+        saveGradeButton = new Button("Add Grade");
+        saveGradeButton.getStyleClass().add("primary-button");
+        saveGradeButton.setDisable(!isAdmin());
+        saveGradeButton.setOnAction(event -> saveGrade());
+
+        deleteGradeButton = new Button("Delete");
+        deleteGradeButton.getStyleClass().add("danger-button");
+        deleteGradeButton.setDisable(true);
+        deleteGradeButton.setOnAction(event -> deleteSelectedGrade());
+
+        Button clearGrade = new Button("Clear");
+        clearGrade.getStyleClass().add("secondary-button");
+        clearGrade.setOnAction(event -> clearGradeForm());
+
+        HBox actions = new HBox(10, saveGradeButton, deleteGradeButton, clearGrade);
+        actions.setAlignment(Pos.CENTER_LEFT);
+
+        Label title = new Label("Class Grades");
+        title.getStyleClass().add("section-title");
+
+        VBox panel = new VBox(14, title, gradeSummaryLabel, gradeTable, grid, actions);
+        panel.getStyleClass().addAll("surface-panel", "form-panel", "aside-panel");
+        panel.setPrefWidth(390);
+        panel.setMinWidth(360);
+
+        boolean editable = isAdmin();
+        gradeClassCodeField.setDisable(!editable);
+        gradeClassNameField.setDisable(!editable);
+        gradeValueField.setDisable(!editable);
+        gradeCreditsField.setDisable(!editable);
+        gradeTermField.setDisable(!editable);
+
+        return panel;
+    }
+
     private void loadStudentPage() {
         try {
             PaginatedResult<Student> result = studentService.findPage(buildStudentCriteria());
@@ -891,6 +1021,44 @@ public class HelloController {
         return column;
     }
 
+    private TableColumn<StudentGrade, Object> gradeColumn(String title, String property) {
+        TableColumn<StudentGrade, Object> column = new TableColumn<>(title);
+        column.setCellValueFactory(new PropertyValueFactory<>(property));
+        return column;
+    }
+
+    private void loadGradesForSelectedStudent() {
+        Student selected = studentTable == null ? null : studentTable.getSelectionModel().getSelectedItem();
+
+        if (selected == null) {
+            gradeItems.clear();
+            clearGradeForm();
+
+            if (gradeSummaryLabel != null) {
+                gradeSummaryLabel.setText("Select a student to view class grades.");
+            }
+
+            return;
+        }
+
+        try {
+            gradeItems.setAll(studentService.findGradesForStudent(selected.getID()));
+            StudentGradeStats stats = studentService.getGradeStatsForStudent(selected.getID());
+
+            if (gradeSummaryLabel != null) {
+                gradeSummaryLabel.setText(
+                        stats.classCount() + " classes | "
+                                + stats.totalCredits() + " credits | Avg "
+                                + formatDouble(stats.averageGrade()) + " | High "
+                                + formatDouble(stats.highestGrade()) + " | Low "
+                                + formatDouble(stats.lowestGrade())
+                );
+            }
+        } catch (SQLException e) {
+            showAlert(Alert.AlertType.ERROR, "Grade Load Failed", "Could not load student grades: " + e.getMessage());
+        }
+    }
+
     private void populateForm(Student student) {
         if (student == null || idField == null) {
             return;
@@ -903,6 +1071,23 @@ public class HelloController {
         departmentBox.setValue(student.getDepartment());
         majorBox.setValue(student.getMajor());
         gpaField.setText(student.getGpa());
+    }
+
+    private void populateGradeForm(StudentGrade grade) {
+        if (gradeClassCodeField == null) {
+            return;
+        }
+
+        if (grade == null) {
+            clearGradeFormFieldsOnly();
+            return;
+        }
+
+        gradeClassCodeField.setText(grade.getClassCode());
+        gradeClassNameField.setText(grade.getClassName());
+        gradeValueField.setText(grade.getGradeDisplay());
+        gradeCreditsField.setText(String.valueOf(grade.getCredits()));
+        gradeTermField.setText(grade.getTerm());
     }
 
     private void saveStudent(boolean updateExisting) {
@@ -948,6 +1133,53 @@ public class HelloController {
         }
     }
 
+    private void saveGrade() {
+        if (!isAdmin()) {
+            showAlert(Alert.AlertType.WARNING, "Access Denied", "Only administrators can modify student grades.");
+            return;
+        }
+
+        Student selectedStudent = studentTable == null ? null : studentTable.getSelectionModel().getSelectedItem();
+
+        if (selectedStudent == null) {
+            showAlert(Alert.AlertType.WARNING, "No Student Selected", "Select a student before adding a class grade.");
+            return;
+        }
+
+        String validation = validateGradeForm();
+
+        if (validation != null) {
+            showAlert(Alert.AlertType.ERROR, "Validation Error", validation);
+            return;
+        }
+
+        StudentGrade grade = new StudentGrade();
+        StudentGrade selectedGrade = gradeTable.getSelectionModel().getSelectedItem();
+
+        if (selectedGrade != null) {
+            grade.setId(selectedGrade.getId());
+        }
+
+        copyGradeFormIntoGrade(grade, selectedStudent.getID());
+
+        try {
+            if (selectedGrade == null) {
+                studentService.addGrade(currentUser, grade);
+                updateStatus("Added grade for " + selectedStudent.getID() + ".");
+            } else {
+                studentService.updateGrade(currentUser, grade);
+                updateStatus("Updated grade for " + selectedStudent.getID() + ".");
+            }
+
+            clearGradeForm();
+            loadGradesForSelectedStudent();
+        } catch (SecurityException e) {
+            showAlert(Alert.AlertType.WARNING, "Access Denied", e.getMessage());
+        } catch (SQLException e) {
+            showAlert(Alert.AlertType.ERROR, "Database Error", "Could not save grade: " + e.getMessage());
+        }
+    }
+
     private void deleteSelectedStudent() {
         if (!isAdmin()) {
             showAlert(Alert.AlertType.WARNING, "Access Denied", "Only administrators can delete student records.");
@@ -985,6 +1217,43 @@ public class HelloController {
         });
     }
 
+    private void deleteSelectedGrade() {
+        if (!isAdmin()) {
+            showAlert(Alert.AlertType.WARNING, "Access Denied", "Only administrators can delete student grades.");
+            return;
+        }
+
+        StudentGrade selectedGrade = gradeTable == null ? null : gradeTable.getSelectionModel().getSelectedItem();
+
+        if (selectedGrade == null) {
+            showAlert(Alert.AlertType.WARNING, "No Selection", "Select a class grade before deleting.");
+            return;
+        }
+
+        Alert confirm = new Alert(
+                Alert.AlertType.CONFIRMATION,
+                "Delete the grade for " + selectedGrade.getClassCode() + "?",
+                ButtonType.CANCEL,
+                ButtonType.OK
+        );
+
+        styleDialog(confirm.getDialogPane());
+        confirm.setHeaderText("Confirm Grade Delete");
+
+        confirm.showAndWait().filter(ButtonType.OK::equals).ifPresent(button -> {
+            try {
+                studentService.deleteGrade(currentUser, selectedGrade);
+                clearGradeForm();
+                loadGradesForSelectedStudent();
+                updateStatus("Deleted grade for " + selectedGrade.getStudentId() + ".");
+            } catch (SecurityException e) {
+                showAlert(Alert.AlertType.WARNING, "Access Denied", e.getMessage());
+            } catch (SQLException e) {
+                showAlert(Alert.AlertType.ERROR, "Database Error", "Could not delete grade: " + e.getMessage());
+            }
+        });
+    }
+
     private void copyFormIntoStudent(Student student) {
         student.setID(clean(idField.getText()));
         student.setFirstName(capitalize(clean(firstNameField.getText())));
@@ -992,6 +1261,15 @@ public class HelloController {
         student.setDepartment(departmentBox.getValue());
         student.setMajor(majorBox.getValue());
         student.setGpa(clean(gpaField.getText()));
+    }
+
+    private void copyGradeFormIntoGrade(StudentGrade grade, String studentId) {
+        grade.setStudentId(studentId);
+        grade.setClassCode(clean(gradeClassCodeField.getText()).toUpperCase());
+        grade.setClassName(capitalize(clean(gradeClassNameField.getText())));
+        grade.setGrade(new BigDecimal(clean(gradeValueField.getText())));
+        grade.setCredits(Integer.parseInt(clean(gradeCreditsField.getText())));
+        grade.setTerm(clean(gradeTermField.getText()));
     }
 
     private String validateStudentForm() {
@@ -1008,6 +1286,35 @@ public class HelloController {
             }
         } catch (NumberFormatException exception) {
             return "GPA must be a number.";
+        }
+
+        return null;
+    }
+
+    private String validateGradeForm() {
+        if (isBlank(gradeClassCodeField.getText()) || isBlank(gradeClassNameField.getText())
+                || isBlank(gradeValueField.getText()) || isBlank(gradeCreditsField.getText())) {
+            return "Class code, class name, grade, and credits are required.";
+        }
+
+        try {
+            double grade = Double.parseDouble(clean(gradeValueField.getText()));
+
+            if (grade < 0 || grade > 100) {
+                return "Grade must be between 0 and 100.";
+            }
+        } catch (NumberFormatException exception) {
+            return "Grade must be a number.";
+        }
+
+        try {
+            int credits = Integer.parseInt(clean(gradeCreditsField.getText()));
+
+            if (credits < 0 || credits > 12) {
+                return "Credits must be between 0 and 12.";
+            }
+        } catch (NumberFormatException exception) {
+            return "Credits must be a whole number.";
         }
 
         return null;
@@ -1033,6 +1340,41 @@ public class HelloController {
         if (addButton != null) {
             addButton.setText("Add Student");
         }
+
+        gradeItems.clear();
+        clearGradeForm();
+
+        if (gradeSummaryLabel != null) {
+            gradeSummaryLabel.setText("Select a student to view class grades.");
+        }
+    }
+
+    private void clearGradeForm() {
+        clearGradeFormFieldsOnly();
+
+        if (gradeTable != null) {
+            gradeTable.getSelectionModel().clearSelection();
+        }
+
+        if (saveGradeButton != null) {
+            saveGradeButton.setText("Add Grade");
+        }
+
+        if (deleteGradeButton != null) {
+            deleteGradeButton.setDisable(true);
+        }
+    }
+
+    private void clearGradeFormFieldsOnly() {
+        if (gradeClassCodeField == null) {
+            return;
+        }
+
+        gradeClassCodeField.clear();
+        gradeClassNameField.clear();
+        gradeValueField.clear();
+        gradeCreditsField.clear();
+        gradeTermField.clear();
     }
 
     private void showProfilePage() {
@@ -1401,6 +1743,7 @@ public class HelloController {
         showAlert(Alert.AlertType.INFORMATION, "Usage Notes",
                 "Dashboard shows student totals, GPA stats, and department counts.\n"
                         + "Students page supports search, sorting, GPA filters, and pagination.\n"
+                        + "Select a student to view and manage individual class grades with average, high, low, and credit totals.\n"
                         + "Staff accounts can view and export data.\n"
                         + "Administrators can add, update, and delete student records.\n"
                         + "Profile pictures are stored in MinIO.\n"

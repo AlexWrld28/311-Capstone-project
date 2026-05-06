@@ -508,6 +508,7 @@
     -fx-text-fill: -fx-danger;
     -fx-min-height: 18px;
     -fx-font-size: 12px;
+    -fx-wrap-text: true;
 }
 
 .student-table,

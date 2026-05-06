@@ -142,6 +142,24 @@ public class SchemaRepository {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """);
+
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS student_class_grades (
+                    id SERIAL PRIMARY KEY,
+                    student_id VARCHAR(20) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    class_name VARCHAR(150) NOT NULL,
+                    class_code VARCHAR(50) NOT NULL,
+                    grade NUMERIC(5,2) NOT NULL,
+                    credits INTEGER NOT NULL DEFAULT 3,
+                    term VARCHAR(50),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
+            stmt.execute("""
+                CREATE INDEX IF NOT EXISTS idx_student_class_grades_student_id
+                ON student_class_grades(student_id)
+            """);
         }
 
         StaffRepository.seedDefaultAdminIfEmpty();
