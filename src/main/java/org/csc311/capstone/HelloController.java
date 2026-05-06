@@ -6,6 +6,7 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
@@ -79,12 +80,17 @@ public class HelloController {
     private TextField gpaField;
     private Button addButton;
     private Button deleteButton;
-    private MenuItem updateMenuItem;
-    private MenuItem deleteMenuItem;
+    private Button dashboardNavButton;
+    private Button studentsNavButton;
+    private Button profileNavButton;
+    private Button auditNavButton;
     private ToggleButton themeToggle;
 
     private Label statusLabel;
     private ImageView staffProfileImageView;
+    private Label studentSummaryLabel;
+    private Label auditSummaryLabel;
+    private boolean shortcutsRegistered;
 
     @FXML
     private void initialize() {
@@ -112,8 +118,17 @@ public class HelloController {
     }
 
     private Node buildAuthCard(boolean registrationMode) {
+        Label eyebrow = new Label("School Operations");
+        eyebrow.getStyleClass().add("page-eyebrow");
+
         Label title = new Label(registrationMode ? "Create Staff Account" : "Staff Login");
         title.getStyleClass().add("auth-title");
+
+        Label subtitle = new Label(registrationMode
+                ? "Provision a staff account for this workspace."
+                : "Sign in to manage student records and reporting.");
+        subtitle.getStyleClass().add("page-subtitle");
+        subtitle.setWrapText(true);
 
         TextField firstName = new TextField();
         firstName.setPromptText("First name");
@@ -144,7 +159,7 @@ public class HelloController {
 
         VBox form = new VBox(12);
         form.getStyleClass().add("auth-card");
-        form.getChildren().add(title);
+        form.getChildren().addAll(eyebrow, title, subtitle);
 
         if (registrationMode) {
             form.getChildren().addAll(firstName, lastName, role);
@@ -162,7 +177,41 @@ public class HelloController {
 
         secondary.setOnAction(event -> root.setCenter(buildAuthCard(!registrationMode)));
 
-        StackPane wrapper = new StackPane(form);
+        Label brandMark = new Label("SMART STUDENT");
+        brandMark.getStyleClass().add("shell-brand-mark");
+
+        Label brandTitle = new Label("Management System");
+        brandTitle.getStyleClass().add("auth-hero-title");
+
+        Label brandCopy = new Label("A single desktop workspace for enrollment, reporting, and staff operations.");
+        brandCopy.getStyleClass().add("auth-hero-copy");
+        brandCopy.setWrapText(true);
+
+        Button authThemeButton = new Button(root.getStyleClass().contains(DARK_THEME) ? "Light Mode" : "Dark Mode");
+        authThemeButton.getStyleClass().add("secondary-button");
+        authThemeButton.setOnAction(event -> {
+            toggleTheme();
+            authThemeButton.setText(root.getStyleClass().contains(DARK_THEME) ? "Light Mode" : "Dark Mode");
+        });
+
+        VBox brandPanel = new VBox(14,
+                brandMark,
+                brandTitle,
+                brandCopy,
+                new HBox(8,
+                        buildTag("Students", "neutral-tag"),
+                        buildTag("Reports", "neutral-tag"),
+                        buildTag("Audit", "neutral-tag")
+                ),
+                authThemeButton
+        );
+        brandPanel.getStyleClass().add("auth-brand-panel");
+
+        HBox authShell = new HBox(28, brandPanel, form);
+        authShell.getStyleClass().add("auth-shell");
+        authShell.setAlignment(Pos.CENTER);
+
+        StackPane wrapper = new StackPane(authShell);
         wrapper.getStyleClass().add("auth-wrapper");
 
         return wrapper;
@@ -222,121 +271,224 @@ public class HelloController {
     }
 
     private void showAppShell() {
-        root.setTop(buildMenuBar());
+        root.setTop(buildShellHeader());
 
         statusLabel = new Label();
         statusLabel.getStyleClass().add("status-label");
 
-        root.setBottom(statusLabel);
-        BorderPane.setMargin(statusLabel, new Insets(0, 18, 14, 18));
+        HBox statusBar = new HBox(statusLabel);
+        statusBar.getStyleClass().add("status-bar");
 
+        root.setBottom(statusBar);
+        BorderPane.setMargin(statusBar, new Insets(0, 24, 24, 24));
+
+        registerShortcuts();
         updateStatus("Signed in as " + currentUser.getFirstName() + " " + currentUser.getLastName() + ".");
     }
 
-    private MenuBar buildMenuBar() {
-        Menu pages = new Menu("Pages");
+    private Node buildShellHeader() {
+        Label brandMark = new Label("SMART STUDENT");
+        brandMark.getStyleClass().add("shell-brand-mark");
 
-        MenuItem dashboard = new MenuItem("Dashboard");
-        dashboard.setOnAction(event -> showDashboardPage());
+        Label brandTitle = new Label("Management System");
+        brandTitle.getStyleClass().add("shell-brand-title");
 
-        MenuItem students = new MenuItem("Students");
-        students.setOnAction(event -> showStudentsPage());
+        Label brandSubtitle = new Label(currentUser.getJobType() + " Workspace");
+        brandSubtitle.getStyleClass().add("shell-brand-subtitle");
 
-        MenuItem profile = new MenuItem("Profile");
-        profile.setOnAction(event -> showProfilePage());
+        VBox brandBlock = new VBox(2, brandMark, brandTitle, brandSubtitle);
 
-        pages.getItems().addAll(dashboard, students, profile);
+        dashboardNavButton = buildNavigationButton("Dashboard", this::showDashboardPage);
+        studentsNavButton = buildNavigationButton("Students", this::showStudentsPage);
+        profileNavButton = buildNavigationButton("Profile", this::showProfilePage);
+
+        HBox navBar = new HBox(8, dashboardNavButton, studentsNavButton, profileNavButton);
+        navBar.getStyleClass().add("shell-nav");
 
         if (isAdmin()) {
-            MenuItem logs = new MenuItem("Audit Logs");
-            logs.setOnAction(event -> showAuditLogsPage());
-            pages.getItems().add(logs);
+            auditNavButton = buildNavigationButton("Audit Logs", this::showAuditLogsPage);
+            navBar.getChildren().add(auditNavButton);
+        } else {
+            auditNavButton = null;
         }
 
-        Menu records = new Menu("Records");
+        themeToggle = new ToggleButton();
+        themeToggle.getStyleClass().add("secondary-button");
+        updateThemeButtonText();
+        themeToggle.setOnAction(event -> toggleTheme());
 
-        MenuItem add = new MenuItem("Add Student");
-        add.setAccelerator(KeyCombination.keyCombination("Shortcut+N"));
-        add.setDisable(!isAdmin());
-        add.setOnAction(event -> {
-            showStudentsPage();
-            clearForm();
+        Button helpButton = new Button("Help");
+        helpButton.getStyleClass().add("secondary-button");
+        helpButton.setOnAction(event -> showHelp());
+
+        Button logoutButton = new Button("Logout");
+        logoutButton.getStyleClass().add("danger-button");
+        logoutButton.setOnAction(event -> logoutUser());
+
+        Label userChip = new Label(currentUser.getFirstName() + " " + currentUser.getLastName()
+                + " | " + currentUser.getJobType());
+        userChip.getStyleClass().add("user-chip");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox utilities = new HBox(10, themeToggle, helpButton, userChip, logoutButton);
+        utilities.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox headerRow = new HBox(18, brandBlock, navBar, spacer, utilities);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox shellHeader = new VBox(headerRow);
+        shellHeader.getStyleClass().add("shell-header");
+
+        return shellHeader;
+    }
+
+    private Button buildNavigationButton(String text, Runnable action) {
+        Button button = new Button(text);
+        button.getStyleClass().add("nav-button");
+        button.setOnAction(event -> action.run());
+        return button;
+    }
+
+    private void setActiveNavigation(Button activeButton) {
+        Button[] buttons = {dashboardNavButton, studentsNavButton, profileNavButton, auditNavButton};
+
+        for (Button button : buttons) {
+            if (button != null) {
+                button.getStyleClass().remove("nav-button-active");
+            }
+        }
+
+        if (activeButton != null && !activeButton.getStyleClass().contains("nav-button-active")) {
+            activeButton.getStyleClass().add("nav-button-active");
+        }
+    }
+
+    private Node buildPageHeader(String eyebrowText, String titleText, String subtitleText, Node... actions) {
+        Label eyebrow = new Label(eyebrowText);
+        eyebrow.getStyleClass().add("page-eyebrow");
+
+        Label title = new Label(titleText);
+        title.getStyleClass().add("page-title");
+
+        Label subtitle = new Label(subtitleText);
+        subtitle.getStyleClass().add("page-subtitle");
+        subtitle.setWrapText(true);
+
+        VBox copy = new VBox(4, eyebrow, title, subtitle);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox header = new HBox(16, copy, spacer);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.getStyleClass().add("page-header");
+
+        if (actions.length > 0) {
+            HBox actionRow = new HBox(10);
+            actionRow.setAlignment(Pos.CENTER_RIGHT);
+            actionRow.getChildren().addAll(actions);
+            header.getChildren().add(actionRow);
+        }
+
+        return header;
+    }
+
+    private VBox buildFieldGroup(String labelText, Region control, double width) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("field-label");
+
+        control.setPrefWidth(width);
+
+        VBox group = new VBox(6, label, control);
+        group.getStyleClass().add("field-group");
+        return group;
+    }
+
+    private Label buildTag(String text, String variantClass) {
+        Label tag = new Label(text);
+        tag.getStyleClass().addAll("tag", variantClass);
+        return tag;
+    }
+
+    private VBox buildDetailItem(String labelText, String valueText) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("detail-label");
+
+        Label value = new Label(valueText);
+        value.getStyleClass().add("detail-value");
+        value.setWrapText(true);
+
+        return new VBox(4, label, value);
+    }
+
+    private void registerShortcuts() {
+        Scene scene = root.getScene();
+
+        if (scene == null || shortcutsRegistered) {
+            return;
+        }
+
+        scene.getAccelerators().put(KeyCombination.keyCombination("Shortcut+N"), () -> {
+            if (currentUser != null) {
+                showStudentsPage();
+                clearForm();
+            }
         });
-
-        updateMenuItem = new MenuItem("Update Selected");
-        updateMenuItem.setAccelerator(KeyCombination.keyCombination("Shortcut+S"));
-        updateMenuItem.setDisable(true);
-        updateMenuItem.setOnAction(event -> saveStudent(true));
-
-        deleteMenuItem = new MenuItem("Delete Selected");
-        deleteMenuItem.setAccelerator(KeyCombination.keyCombination("Shortcut+D"));
-        deleteMenuItem.setDisable(true);
-        deleteMenuItem.setOnAction(event -> deleteSelectedStudent());
-
-        records.getItems().addAll(add, updateMenuItem, deleteMenuItem);
-
-        Menu reports = new Menu("Reports");
-
-        MenuItem csv = new MenuItem("Export Filtered CSV");
-        csv.setAccelerator(KeyCombination.keyCombination("Shortcut+E"));
-        csv.setOnAction(event -> exportCsv());
-
-        MenuItem pdf = new MenuItem("Export Filtered PDF");
-        pdf.setAccelerator(KeyCombination.keyCombination("Shortcut+P"));
-        pdf.setOnAction(event -> exportPdf());
-
-        reports.getItems().addAll(csv, pdf);
-
-        Menu account = new Menu("Account");
-
-        MenuItem uploadPicture = new MenuItem("Upload Profile Picture");
-        uploadPicture.setOnAction(event -> uploadProfilePicture());
-
-        MenuItem refresh = new MenuItem("Refresh Profile");
-        refresh.setOnAction(event -> refreshCurrentUser());
-
-        MenuItem logout = new MenuItem("Logout");
-        logout.setOnAction(event -> {
-            currentUser = null;
-            showLoginView();
+        scene.getAccelerators().put(KeyCombination.keyCombination("Shortcut+S"), () -> {
+            if (currentUser != null && studentTable != null && studentTable.getSelectionModel().getSelectedItem() != null) {
+                saveStudent(true);
+            }
         });
+        scene.getAccelerators().put(KeyCombination.keyCombination("Shortcut+D"), () -> {
+            if (currentUser != null && studentTable != null && studentTable.getSelectionModel().getSelectedItem() != null) {
+                deleteSelectedStudent();
+            }
+        });
+        scene.getAccelerators().put(KeyCombination.keyCombination("Shortcut+E"), () -> {
+            if (currentUser != null) {
+                exportCsv();
+            }
+        });
+        scene.getAccelerators().put(KeyCombination.keyCombination("Shortcut+P"), () -> {
+            if (currentUser != null) {
+                exportPdf();
+            }
+        });
+        scene.getAccelerators().put(KeyCombination.keyCombination("Shortcut+T"), this::toggleTheme);
+        scene.getAccelerators().put(KeyCombination.keyCombination("F1"), this::showHelp);
 
-        account.getItems().addAll(uploadPicture, refresh, new SeparatorMenuItem(), logout);
+        shortcutsRegistered = true;
+    }
 
-        Menu view = new Menu("View");
-
-        MenuItem theme = new MenuItem("Switch Theme");
-        theme.setAccelerator(KeyCombination.keyCombination("Shortcut+T"));
-        theme.setOnAction(event -> toggleTheme());
-
-        view.getItems().add(theme);
-
-        Menu help = new Menu("Help");
-
-        MenuItem usage = new MenuItem("Usage Notes");
-        usage.setAccelerator(KeyCombination.keyCombination("F1"));
-        usage.setOnAction(event -> showHelp());
-
-        help.getItems().add(usage);
-
-        return new MenuBar(pages, records, reports, account, view, help);
+    private void logoutUser() {
+        currentUser = null;
+        studentItems.clear();
+        auditLogItems.clear();
+        showLoginView();
     }
 
     private void showDashboardPage() {
         try {
+            setActiveNavigation(dashboardNavButton);
             DashboardStats stats = dashboardService.getStats();
 
-            Label title = new Label("Dashboard");
-            title.getStyleClass().add("auth-title");
+            Button refreshButton = new Button("Refresh");
+            refreshButton.getStyleClass().add("secondary-button");
+            refreshButton.setOnAction(event -> showDashboardPage());
 
-            HBox statCards = new HBox(14,
+            FlowPane statCards = new FlowPane(14, 14,
                     statCard("Total Students", String.valueOf(stats.totalStudents())),
                     statCard("Average GPA", formatDouble(stats.averageGpa())),
                     statCard("Highest GPA", formatDouble(stats.highestGpa())),
                     statCard("Lowest GPA", formatDouble(stats.lowestGpa()))
             );
+            statCards.getStyleClass().add("metric-grid");
+            statCards.setPrefWrapLength(1200);
 
             TableView<Map.Entry<String, Integer>> departmentTable = new TableView<>();
+            departmentTable.getStyleClass().add("student-table");
             departmentTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
             TableColumn<Map.Entry<String, Integer>, String> departmentColumn = new TableColumn<>("Department");
@@ -348,9 +500,38 @@ public class HelloController {
             departmentTable.getColumns().addAll(departmentColumn, totalColumn);
             departmentTable.setItems(FXCollections.observableArrayList(stats.studentsByDepartment().entrySet()));
 
-            VBox panel = new VBox(18, title, statCards, new Label("Students by Department"), departmentTable);
-            panel.getStyleClass().add("workspace");
+            VBox heroPanel = new VBox(10,
+                    buildTag("Live Summary", "accent-tag"),
+                    new Label("Enrollment Snapshot"),
+                    new Label(stats.totalStudents() + " active records across " + stats.studentsByDepartment().size() + " departments.")
+            );
+            heroPanel.getStyleClass().addAll("surface-panel", "hero-panel");
+            ((Label) heroPanel.getChildren().get(1)).getStyleClass().add("hero-title");
+            ((Label) heroPanel.getChildren().get(2)).getStyleClass().add("section-copy");
+
+            VBox departmentPanel = new VBox(12,
+                    new Label("Students by Department"),
+                    new Label("Department counts update from the current database state."),
+                    departmentTable
+            );
+            departmentPanel.getStyleClass().addAll("surface-panel", "table-panel");
+            ((Label) departmentPanel.getChildren().get(0)).getStyleClass().add("section-title");
+            ((Label) departmentPanel.getChildren().get(1)).getStyleClass().add("section-copy");
             VBox.setVgrow(departmentTable, Priority.ALWAYS);
+
+            VBox panel = new VBox(18,
+                    buildPageHeader(
+                            "Overview",
+                            "Dashboard",
+                            "Live student metrics and department distribution.",
+                            refreshButton
+                    ),
+                    heroPanel,
+                    statCards,
+                    departmentPanel
+            );
+            panel.getStyleClass().add("workspace");
+            VBox.setVgrow(departmentPanel, Priority.ALWAYS);
 
             root.setCenter(panel);
             updateStatus("Dashboard loaded.");
@@ -361,19 +542,21 @@ public class HelloController {
 
     private Node statCard(String label, String value) {
         Label title = new Label(label);
-        title.getStyleClass().add("count-label");
+        title.getStyleClass().add("metric-label");
 
         Label number = new Label(value);
-        number.getStyleClass().add("auth-title");
+        number.getStyleClass().add("metric-value");
 
         VBox card = new VBox(8, title, number);
-        card.getStyleClass().add("form-panel");
-        card.setPrefWidth(180);
+        card.getStyleClass().addAll("surface-panel", "metric-card");
+        card.setPrefWidth(220);
+        card.setMinWidth(200);
 
         return card;
     }
 
     private void showStudentsPage() {
+        setActiveNavigation(studentsNavButton);
         root.setCenter(buildStudentsPage());
         currentStudentPage = 1;
         loadStudentPage();
@@ -399,14 +582,6 @@ public class HelloController {
             boolean hasSelection = selected != null;
             boolean canModify = isAdmin() && hasSelection;
 
-            if (updateMenuItem != null) {
-                updateMenuItem.setDisable(!canModify);
-            }
-
-            if (deleteMenuItem != null) {
-                deleteMenuItem.setDisable(!canModify);
-            }
-
             if (deleteButton != null) {
                 deleteButton.setDisable(!canModify);
             }
@@ -416,15 +591,42 @@ public class HelloController {
             }
         });
 
-        VBox tablePanel = new VBox(12, buildStudentFilters(), studentTable, buildStudentPaginationControls());
-        tablePanel.getStyleClass().add("table-panel");
+        studentSummaryLabel = new Label("Loading student records...");
+        studentSummaryLabel.getStyleClass().add("summary-label");
+
+        Button exportCsvButton = new Button("Export CSV");
+        exportCsvButton.getStyleClass().add("secondary-button");
+        exportCsvButton.setOnAction(event -> exportCsv());
+
+        Button exportPdfButton = new Button("Export PDF");
+        exportPdfButton.getStyleClass().add("secondary-button");
+        exportPdfButton.setOnAction(event -> exportPdf());
+
+        VBox tableHeader = new VBox(4, new Label("Student Directory"), studentSummaryLabel);
+        ((Label) tableHeader.getChildren().get(0)).getStyleClass().add("section-title");
+
+        VBox tablePanel = new VBox(16, tableHeader, buildStudentFilters(), studentTable, buildStudentPaginationControls());
+        tablePanel.getStyleClass().addAll("surface-panel", "table-panel");
         VBox.setVgrow(studentTable, Priority.ALWAYS);
 
         Node formPanel = buildStudentForm();
 
-        HBox page = new HBox(18, tablePanel, formPanel);
+        SplitPane contentSplit = new SplitPane(tablePanel, formPanel);
+        contentSplit.setDividerPositions(0.72);
+        contentSplit.getStyleClass().add("content-split");
+
+        VBox page = new VBox(18,
+                buildPageHeader(
+                        "Records",
+                        "Students",
+                        "Search, filter, and maintain student records.",
+                        exportCsvButton,
+                        exportPdfButton
+                ),
+                contentSplit
+        );
         page.getStyleClass().add("workspace");
-        HBox.setHgrow(tablePanel, Priority.ALWAYS);
+        VBox.setVgrow(contentSplit, Priority.ALWAYS);
 
         return page;
     }
@@ -466,12 +668,14 @@ public class HelloController {
         sortDirectionBox.getSelectionModel().selectFirst();
 
         Button apply = new Button("Apply");
+        apply.getStyleClass().add("primary-button");
         apply.setOnAction(event -> {
             currentStudentPage = 1;
             loadStudentPage();
         });
 
         Button clear = new Button("Clear");
+        clear.getStyleClass().add("secondary-button");
         clear.setOnAction(event -> {
             searchField.clear();
             filterDepartmentBox.getSelectionModel().selectFirst();
@@ -484,26 +688,30 @@ public class HelloController {
             loadStudentPage();
         });
 
-        HBox filters = new HBox(10,
-                searchField,
-                filterDepartmentBox,
-                filterMajorBox,
-                minGpaField,
-                maxGpaField,
-                sortByBox,
-                sortDirectionBox,
-                apply,
-                clear
-        );
+        HBox actions = new HBox(10, apply, clear);
+        actions.setAlignment(Pos.BOTTOM_LEFT);
 
-        filters.setAlignment(Pos.CENTER_LEFT);
-        filters.getStyleClass().add("toolbar");
+        FlowPane filters = new FlowPane();
+        filters.setHgap(12);
+        filters.setVgap(12);
+        filters.getChildren().addAll(
+                buildFieldGroup("Search", searchField, 320),
+                buildFieldGroup("Department", filterDepartmentBox, 190),
+                buildFieldGroup("Major", filterMajorBox, 190),
+                buildFieldGroup("Min GPA", minGpaField, 110),
+                buildFieldGroup("Max GPA", maxGpaField, 110),
+                buildFieldGroup("Sort By", sortByBox, 150),
+                buildFieldGroup("Direction", sortDirectionBox, 150),
+                buildFieldGroup("Actions", actions, 180)
+        );
+        filters.getStyleClass().add("toolbar-wrap");
 
         return filters;
     }
 
     private Node buildStudentPaginationControls() {
         Button previous = new Button("Previous");
+        previous.getStyleClass().add("secondary-button");
         previous.setOnAction(event -> {
             if (currentStudentPage > 1) {
                 currentStudentPage--;
@@ -512,6 +720,7 @@ public class HelloController {
         });
 
         Button next = new Button("Next");
+        next.getStyleClass().add("secondary-button");
         next.setOnAction(event -> {
             if (currentStudentPage < currentStudentTotalPages) {
                 currentStudentPage++;
@@ -521,6 +730,7 @@ public class HelloController {
 
         pageSizeBox = new ComboBox<>(FXCollections.observableArrayList(5, 10, 20, 50));
         pageSizeBox.getSelectionModel().select(Integer.valueOf(currentStudentPageSize));
+        pageSizeBox.setPrefWidth(90);
         pageSizeBox.setOnAction(event -> {
             currentStudentPageSize = pageSizeBox.getValue();
             currentStudentPage = 1;
@@ -528,12 +738,14 @@ public class HelloController {
         });
 
         pageLabel = new Label();
+        pageLabel.getStyleClass().add("summary-label");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox pagination = new HBox(10, previous, next, new Label("Page Size:"), pageSizeBox, spacer, pageLabel);
         pagination.setAlignment(Pos.CENTER_LEFT);
+        pagination.getStyleClass().add("pagination-bar");
 
         return pagination;
     }
@@ -547,12 +759,25 @@ public class HelloController {
         });
 
         firstNameField = new TextField();
+        firstNameField.setPromptText("First name");
         lastNameField = new TextField();
+        lastNameField.setPromptText("Last name");
 
         departmentBox = new ComboBox<>(FXCollections.observableArrayList(departments));
+        departmentBox.setPromptText("Select department");
         majorBox = new ComboBox<>(FXCollections.observableArrayList(majors));
+        majorBox.setPromptText("Select major");
 
         gpaField = new TextField();
+        gpaField.setPromptText("0.00 - 4.00");
+
+        idField.setPromptText("Numeric ID");
+        idField.setMaxWidth(Double.MAX_VALUE);
+        firstNameField.setMaxWidth(Double.MAX_VALUE);
+        lastNameField.setMaxWidth(Double.MAX_VALUE);
+        departmentBox.setMaxWidth(Double.MAX_VALUE);
+        majorBox.setMaxWidth(Double.MAX_VALUE);
+        gpaField.setMaxWidth(Double.MAX_VALUE);
 
         GridPane grid = new GridPane();
         grid.getStyleClass().add("form-grid");
@@ -562,6 +787,12 @@ public class HelloController {
         grid.addRow(3, new Label("Department"), departmentBox);
         grid.addRow(4, new Label("Major"), majorBox);
         grid.addRow(5, new Label("GPA"), gpaField);
+
+        ColumnConstraints labelColumn = new ColumnConstraints();
+        labelColumn.setMinWidth(96);
+        ColumnConstraints fieldColumn = new ColumnConstraints();
+        fieldColumn.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(labelColumn, fieldColumn);
 
         addButton = new Button("Add Student");
         addButton.getStyleClass().add("primary-button");
@@ -580,24 +811,33 @@ public class HelloController {
         deleteButton.setOnAction(event -> deleteSelectedStudent());
 
         Button clear = new Button("Clear");
+        clear.getStyleClass().add("secondary-button");
         clear.setOnAction(event -> clearForm());
-
-        themeToggle = new ToggleButton();
-        updateThemeButtonText();
-        themeToggle.setOnAction(event -> toggleTheme());
 
         HBox actions = new HBox(10, addButton, deleteButton, clear);
         actions.setAlignment(Pos.CENTER_LEFT);
 
-        Label accessNote = new Label(isAdmin()
-                ? "Administrator access: create, update, and delete enabled."
-                : "Staff access: view and export only.");
-        accessNote.getStyleClass().add("count-label");
+        Label formTitle = new Label("Student Details");
+        formTitle.getStyleClass().add("section-title");
 
-        VBox form = new VBox(14, new Label("Student Details"), accessNote, grid, actions, themeToggle);
-        form.getStyleClass().add("form-panel");
-        form.setPrefWidth(330);
-        form.setMinWidth(330);
+        Label accessNote = new Label(isAdmin()
+                ? "Select a row to update it, or clear the form to add a new record."
+                : "Staff accounts can review records and export the current result set.");
+        accessNote.getStyleClass().add("section-copy");
+        accessNote.setWrapText(true);
+
+        Label accessBadge = buildTag(isAdmin() ? "Administrator" : "Read Only", isAdmin() ? "accent-tag" : "neutral-tag");
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+
+        HBox formHeader = new HBox(10, formTitle, headerSpacer, accessBadge);
+        formHeader.setAlignment(Pos.CENTER_LEFT);
+
+        VBox form = new VBox(14, formHeader, accessNote, grid, actions);
+        form.getStyleClass().addAll("surface-panel", "form-panel", "aside-panel");
+        form.setPrefWidth(360);
+        form.setMinWidth(340);
 
         boolean editable = isAdmin();
         idField.setDisable(!editable);
@@ -618,7 +858,11 @@ public class HelloController {
             currentStudentTotalPages = result.totalPages();
 
             if (pageLabel != null) {
-                pageLabel.setText("Page " + result.page() + " of " + result.totalPages() + " • " + result.totalItems() + " records");
+                pageLabel.setText("Page " + result.page() + " of " + result.totalPages() + " | " + result.totalItems() + " records");
+            }
+
+            if (studentSummaryLabel != null) {
+                studentSummaryLabel.setText(result.totalItems() + " records matched the current filters.");
             }
 
             updateStatus("Loaded " + result.items().size() + " student records.");
@@ -792,35 +1036,68 @@ public class HelloController {
     }
 
     private void showProfilePage() {
-        Label title = new Label("Profile");
-        title.getStyleClass().add("auth-title");
+        setActiveNavigation(profileNavButton);
+
+        Button refreshButton = new Button("Refresh");
+        refreshButton.getStyleClass().add("secondary-button");
+        refreshButton.setOnAction(event -> {
+            refreshCurrentUser();
+            showProfilePage();
+        });
 
         staffProfileImageView = new ImageView();
-        staffProfileImageView.setFitWidth(160);
-        staffProfileImageView.setFitHeight(160);
+        staffProfileImageView.setFitWidth(176);
+        staffProfileImageView.setFitHeight(176);
         staffProfileImageView.setPreserveRatio(true);
 
         loadProfileImage();
 
+        StackPane avatarFrame = new StackPane(staffProfileImageView);
+        avatarFrame.getStyleClass().add("profile-avatar-frame");
+
         Label name = new Label(currentUser.getFirstName() + " " + currentUser.getLastName());
-        name.getStyleClass().add("auth-title");
+        name.getStyleClass().add("page-title");
 
         Label email = new Label(currentUser.getEmail());
-        Label role = new Label("Role: " + currentUser.getJobType());
-        Label department = new Label("Department: " + currentUser.getDepartment());
+        email.getStyleClass().add("page-subtitle");
 
         Button upload = new Button("Upload Profile Picture");
         upload.getStyleClass().add("primary-button");
         upload.setOnAction(event -> uploadProfilePicture());
 
-        VBox profileCard = new VBox(14, staffProfileImageView, name, email, role, department, upload);
-        profileCard.getStyleClass().add("form-panel");
-        profileCard.setMaxWidth(420);
+        HBox tags = new HBox(8,
+                buildTag(currentUser.getJobType(), "accent-tag"),
+                buildTag(currentUser.getDepartment(), "neutral-tag")
+        );
 
-        StackPane wrapper = new StackPane(profileCard);
-        wrapper.getStyleClass().add("workspace");
+        VBox profileCard = new VBox(16, avatarFrame, name, email, tags, upload);
+        profileCard.getStyleClass().addAll("surface-panel", "profile-card");
+        profileCard.setPrefWidth(360);
 
-        VBox page = new VBox(18, title, wrapper);
+        VBox detailsCard = new VBox(14,
+                new Label("Account Details"),
+                buildDetailItem("Staff ID", currentUser.getID()),
+                buildDetailItem("Email", currentUser.getEmail()),
+                buildDetailItem("Role", currentUser.getJobType()),
+                buildDetailItem("Department", currentUser.getDepartment()),
+                buildDetailItem("Image Status", isBlank(currentUser.getImgURL()) ? "No profile image uploaded." : "Profile image available.")
+        );
+        detailsCard.getStyleClass().addAll("surface-panel", "form-panel");
+        ((Label) detailsCard.getChildren().get(0)).getStyleClass().add("section-title");
+
+        HBox body = new HBox(18, profileCard, detailsCard);
+        body.setAlignment(Pos.TOP_LEFT);
+        HBox.setHgrow(detailsCard, Priority.ALWAYS);
+
+        VBox page = new VBox(18,
+                buildPageHeader(
+                        "Account",
+                        "Profile",
+                        "Manage your staff identity and profile image.",
+                        refreshButton
+                ),
+                body
+        );
         page.getStyleClass().add("workspace");
 
         root.setCenter(page);
@@ -884,10 +1161,14 @@ public class HelloController {
             return;
         }
 
-        Label title = new Label("Audit Logs");
-        title.getStyleClass().add("auth-title");
+        setActiveNavigation(auditNavButton);
+
+        Button refreshButton = new Button("Refresh");
+        refreshButton.getStyleClass().add("secondary-button");
+        refreshButton.setOnAction(event -> loadAuditLogs());
 
         auditLogTable = new TableView<>(auditLogItems);
+        auditLogTable.getStyleClass().add("student-table");
         auditLogTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
         TableColumn<AuditLog, String> imageColumn = new TableColumn<>("Staff Image");
@@ -933,11 +1214,31 @@ public class HelloController {
 
         auditLogTable.getColumns().addAll(imageColumn, staffColumn, actionColumn, studentColumn, detailsColumn, timestampColumn);
 
+        auditSummaryLabel = new Label("Loading audit activity...");
+        auditSummaryLabel.getStyleClass().add("summary-label");
+
         Node pagination = buildAuditPaginationControls();
 
-        VBox page = new VBox(18, title, auditLogTable, pagination);
-        page.getStyleClass().add("workspace");
+        VBox logPanel = new VBox(16,
+                new VBox(4, new Label("Activity Feed"), auditSummaryLabel),
+                auditLogTable,
+                pagination
+        );
+        logPanel.getStyleClass().addAll("surface-panel", "table-panel");
+        ((Label) ((VBox) logPanel.getChildren().get(0)).getChildren().get(0)).getStyleClass().add("section-title");
         VBox.setVgrow(auditLogTable, Priority.ALWAYS);
+
+        VBox page = new VBox(18,
+                buildPageHeader(
+                        "Administration",
+                        "Audit Logs",
+                        "Recent staff actions, exports, and record changes.",
+                        refreshButton
+                ),
+                logPanel
+        );
+        page.getStyleClass().add("workspace");
+        VBox.setVgrow(logPanel, Priority.ALWAYS);
 
         root.setCenter(page);
 
@@ -947,6 +1248,7 @@ public class HelloController {
 
     private Node buildAuditPaginationControls() {
         Button previous = new Button("Previous");
+        previous.getStyleClass().add("secondary-button");
         previous.setOnAction(event -> {
             if (currentAuditPage > 1) {
                 currentAuditPage--;
@@ -955,6 +1257,7 @@ public class HelloController {
         });
 
         Button next = new Button("Next");
+        next.getStyleClass().add("secondary-button");
         next.setOnAction(event -> {
             if (currentAuditPage < currentAuditTotalPages) {
                 currentAuditPage++;
@@ -964,6 +1267,7 @@ public class HelloController {
 
         ComboBox<Integer> auditPageSizeBox = new ComboBox<>(FXCollections.observableArrayList(5, 10, 20, 50));
         auditPageSizeBox.getSelectionModel().select(Integer.valueOf(currentAuditPageSize));
+        auditPageSizeBox.setPrefWidth(90);
         auditPageSizeBox.setOnAction(event -> {
             currentAuditPageSize = auditPageSizeBox.getValue();
             currentAuditPage = 1;
@@ -971,12 +1275,14 @@ public class HelloController {
         });
 
         auditPageLabel = new Label();
+        auditPageLabel.getStyleClass().add("summary-label");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox pagination = new HBox(10, previous, next, new Label("Page Size:"), auditPageSizeBox, spacer, auditPageLabel);
         pagination.setAlignment(Pos.CENTER_LEFT);
+        pagination.getStyleClass().add("pagination-bar");
 
         return pagination;
     }
@@ -989,7 +1295,11 @@ public class HelloController {
             currentAuditTotalPages = result.totalPages();
 
             if (auditPageLabel != null) {
-                auditPageLabel.setText("Page " + result.page() + " of " + result.totalPages() + " • " + result.totalItems() + " logs");
+                auditPageLabel.setText("Page " + result.page() + " of " + result.totalPages() + " | " + result.totalItems() + " logs");
+            }
+
+            if (auditSummaryLabel != null) {
+                auditSummaryLabel.setText(result.totalItems() + " log entries available.");
             }
 
             updateStatus("Loaded audit logs.");
