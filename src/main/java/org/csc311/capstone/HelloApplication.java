@@ -16,6 +16,7 @@ public class HelloApplication extends Application {
 
         stage.setMinWidth(1920);
         stage.setMinHeight(1080);
+        stage.setMaximized(true);
         stage.setTitle("Smart Student Management System");
         stage.setScene(scene);
         stage.show();

@@ -419,7 +419,8 @@ Change this password for any real deployment.
 
 Important dependencies:
 
-```xml
+
+```
 <dependency>
     <groupId>org.postgresql</groupId>
     <artifactId>postgresql</artifactId>
@@ -456,6 +457,7 @@ Important dependencies:
     <version>5.12.0</version>
 </dependency>
 ```
+
 
 ---
 
@@ -529,6 +531,7 @@ GROUP 2:
 * Alex Zirilli
 * Jake Dunn
 * Benji Sanoff-Wiener
+* Charles Gonzalez
 
 ---
 

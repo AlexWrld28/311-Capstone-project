@@ -348,7 +348,10 @@ public class HelloController {
             departmentTable.getColumns().addAll(departmentColumn, totalColumn);
             departmentTable.setItems(FXCollections.observableArrayList(stats.studentsByDepartment().entrySet()));
 
-            VBox panel = new VBox(18, title, statCards, new Label("Students by Department"), departmentTable);
+            Label sectionTitle = new Label("Students by Department");
+            sectionTitle.getStyleClass().add("section-title");
+
+            VBox panel = new VBox(18, title, statCards, sectionTitle, departmentTable);
             panel.getStyleClass().add("workspace");
             VBox.setVgrow(departmentTable, Priority.ALWAYS);
 
@@ -367,7 +370,7 @@ public class HelloController {
         number.getStyleClass().add("auth-title");
 
         VBox card = new VBox(8, title, number);
-        card.getStyleClass().add("form-panel");
+        card.getStyleClass().addAll("form-panel", "stat-card");
         card.setPrefWidth(180);
 
         return card;
@@ -528,12 +531,14 @@ public class HelloController {
         });
 
         pageLabel = new Label();
+        pageLabel.getStyleClass().add("count-label");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox pagination = new HBox(10, previous, next, new Label("Page Size:"), pageSizeBox, spacer, pageLabel);
         pagination.setAlignment(Pos.CENTER_LEFT);
+        pagination.getStyleClass().add("pagination-bar");
 
         return pagination;
     }
@@ -583,6 +588,7 @@ public class HelloController {
         clear.setOnAction(event -> clearForm());
 
         themeToggle = new ToggleButton();
+        themeToggle.getStyleClass().add("theme-toggle");
         updateThemeButtonText();
         themeToggle.setOnAction(event -> toggleTheme());
 
@@ -594,7 +600,10 @@ public class HelloController {
                 : "Staff access: view and export only.");
         accessNote.getStyleClass().add("count-label");
 
-        VBox form = new VBox(14, new Label("Student Details"), accessNote, grid, actions, themeToggle);
+        Label formTitle = new Label("Student Details");
+        formTitle.getStyleClass().add("section-title");
+
+        VBox form = new VBox(14, formTitle, accessNote, grid, actions, themeToggle);
         form.getStyleClass().add("form-panel");
         form.setPrefWidth(330);
         form.setMinWidth(330);
@@ -806,8 +815,11 @@ public class HelloController {
         name.getStyleClass().add("auth-title");
 
         Label email = new Label(currentUser.getEmail());
+        email.getStyleClass().add("profile-detail");
         Label role = new Label("Role: " + currentUser.getJobType());
+        role.getStyleClass().add("profile-detail");
         Label department = new Label("Department: " + currentUser.getDepartment());
+        department.getStyleClass().add("profile-detail");
 
         Button upload = new Button("Upload Profile Picture");
         upload.getStyleClass().add("primary-button");
@@ -971,12 +983,14 @@ public class HelloController {
         });
 
         auditPageLabel = new Label();
+        auditPageLabel.getStyleClass().add("count-label");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox pagination = new HBox(10, previous, next, new Label("Page Size:"), auditPageSizeBox, spacer, auditPageLabel);
         pagination.setAlignment(Pos.CENTER_LEFT);
+        pagination.getStyleClass().add("pagination-bar");
 
         return pagination;
     }
