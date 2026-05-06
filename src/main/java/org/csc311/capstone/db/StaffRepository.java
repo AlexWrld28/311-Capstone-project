@@ -65,7 +65,7 @@ public class StaffRepository {
         admin.setJobType("Administrator");
         admin.setDepartment("Administration");
         admin.setImgURL(null);
-        admin.setPasswordHash(hashPassword("admin123"));
+        admin.setPasswordHash(hashPassword("Admin123!"));
 
         insert(admin);
     }

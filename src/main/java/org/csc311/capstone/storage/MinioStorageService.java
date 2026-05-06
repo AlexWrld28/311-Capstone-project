@@ -22,6 +22,7 @@ public class MinioStorageService {
     private static final String ACCESS_KEY = dotenv.get("MINIO_ACCESS_KEY");
     private static final String SECRET_KEY = dotenv.get("MINIO_SECRET_KEY");
     private static final String BUCKET = dotenv.get("MINIO_BUCKET", "staff-images");
+    private static final long MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
     private static MinioClient client;
 
@@ -34,6 +35,11 @@ public class MinioStorageService {
             throw new IllegalArgumentException("Missing staff ID.");
         }
 
+        if (imageFile.length() > MAX_IMAGE_SIZE_BYTES) {
+            throw new IllegalArgumentException("Image file is too large. Maximum allowed size is 5 MB.");
+        }
+
+        validateImageExtension(imageFile.getName());
         validateConfig();
 
         try {
@@ -56,6 +62,18 @@ public class MinioStorageService {
             return PUBLIC_URL + "/" + BUCKET + "/" + objectName;
         } catch (Exception e) {
             throw new RuntimeException("Failed to upload staff image to MinIO: " + e.getMessage(), e);
+        }
+    }
+
+    private static void validateImageExtension(String fileName) {
+        String extension = getExtension(fileName);
+
+        if (!extension.equals(".jpg")
+                && !extension.equals(".jpeg")
+                && !extension.equals(".png")
+                && !extension.equals(".gif")
+                && !extension.equals(".webp")) {
+            throw new IllegalArgumentException("Invalid image type. Allowed types: JPG, PNG, GIF, WEBP.");
         }
     }
 

@@ -431,7 +431,7 @@ If the staff table is empty, the app seeds a default administrator account.
 
 ```txt
 Email: admin@school.edu
-Password: admin123
+Password: Admin123!
 ```
 
 Change this password for any real deployment.
