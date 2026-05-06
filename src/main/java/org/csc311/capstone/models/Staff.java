@@ -1,11 +1,14 @@
 package org.csc311.capstone.models;
 
-/**
- * @author Charles Gonzalez Jr
- */
 public class Staff {
-
-    private String ID,jobType,imgURL,email,firstName,lastName,department,passwordHash;
+    private String ID;
+    private String jobType;
+    private String imgURL;
+    private String email;
+    private String firstName;
+    private String lastName;
+    private String department;
+    private String passwordHash;
 
     public String getID() {
         return ID;
