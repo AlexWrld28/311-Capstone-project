@@ -12,7 +12,7 @@ public class ProfileService {
 
     public String uploadProfileImage(Staff staff, File file) throws SQLException {
         if (staff == null) {
-            throw new IllegalArgumentException("No staff user is logged in.");
+            throw new IllegalArgumentException("No staff user is logged in currently.");
         }
 
         String imageUrl = MinioStorageService.uploadStaffImage(file, staff.getID());

@@ -17,7 +17,7 @@ public class AuditLogRepository {
                 staff_name,
                 staff_email,
                 staff_img_url,
-                action,
+                actions,
                 student_id,
                 details
             )
