@@ -36,15 +36,17 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.csc311.capstone.models.Staff;
 import org.csc311.capstone.models.Student;
+import org.csc311.capstone.db.StudentRepository;
+import org.csc311.capstone.db.StaffRepository;
+import org.csc311.capstone.util.DataExportHandler;
+import java.util.ArrayList;
+import java.sql.SQLException;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
 
 public class HelloController {
     private static final String LIGHT_THEME = "light-theme";
@@ -54,7 +56,6 @@ public class HelloController {
     private BorderPane root;
 
     private final ObservableList<Student> students = FXCollections.observableArrayList();
-    private final Map<String, Staff> users = new LinkedHashMap<>();
     private final FilteredList<Student> filteredStudents = new FilteredList<>(students, student -> true);
 
     private TableView<Student> studentTable;
@@ -77,30 +78,28 @@ public class HelloController {
 
     @FXML
     private void initialize() {
-        seedUsers();
-        seedStudents();
         root.getStyleClass().add(LIGHT_THEME);
+
+        try {
+            StaffRepository.initializeTable();
+            StaffRepository.seedDefaultAdminIfEmpty();
+
+            StudentRepository.initializeTable();
+            students.setAll(StudentRepository.findAll());
+        } catch (SQLException e) {
+            showAlert(Alert.AlertType.ERROR, "Database Error", "Could not initialize database: " + e.getMessage());
+        }
+
         showLoginView();
     }
 
-    private void seedUsers() {
-        Staff admin = new Staff();
-        admin.setID("A001");
-        admin.setFirstName("Demo");
-        admin.setLastName("Admin");
-        admin.setEmail("admin@school.edu");
-        admin.setPassword("admin123");
-        admin.setJobType("Administrator");
-        admin.setDepartment("Administration");
-        users.put(admin.getEmail().toLowerCase(), admin);
-    }
-
-    private void seedStudents() {
-        students.addAll(
-                new Student("1001", "Maya", "Chen", "Computer Science", "Software Engineering", "3.82"),
-                new Student("1002", "Liam", "Patel", "Mathematics", "Data Science", "3.65"),
-                new Student("1003", "Sofia", "Garcia", "Business", "Accounting", "3.41")
-        );
+    private void loadStudentsFromDatabase() {
+        try {
+            StudentRepository.initializeTable();
+            students.setAll(StudentRepository.findAll());
+        } catch (SQLException e) {
+            showAlert(Alert.AlertType.ERROR, "Database Error", "Could not load students: " + e.getMessage());
+        }
     }
 
     private void showLoginView() {
@@ -146,7 +145,7 @@ public class HelloController {
         if (registrationMode) {
             form.getChildren().addAll(firstName, lastName, role);
         }
-        form.getChildren().addAll(email, password, error, primary, secondary);
+        form.getChildren().addAll(email, password, error, primary,  secondary);
 
         primary.setOnAction(event -> {
             if (registrationMode) {
@@ -163,14 +162,19 @@ public class HelloController {
     }
 
     private void loginUser(String email, String password, Label error) {
-        Staff user = users.get(clean(email).toLowerCase());
-        if (user == null || !Objects.equals(user.getPassword(), password)) {
-            error.setText("Enter a valid staff email and password.");
-            return;
-        }
+        try {
+            Staff user = StaffRepository.findByEmail(clean(email));
 
-        currentUser = user;
-        showDashboard();
+            if (user == null || !StaffRepository.verifyPassword(password, user.getPasswordHash())) {
+                error.setText("Enter a valid staff email and password.");
+                return;
+            }
+
+            currentUser = user;
+            showDashboard();
+        } catch (SQLException e) {
+            error.setText("Database login failed: " + e.getMessage());
+        }
     }
 
     private void registerUser(TextField firstName, TextField lastName, TextField email, PasswordField password,
@@ -179,27 +183,36 @@ public class HelloController {
             error.setText("All registration fields are required.");
             return;
         }
+
         String normalizedEmail = clean(email.getText()).toLowerCase();
+
         if (!normalizedEmail.contains("@")) {
             error.setText("Enter a valid email address.");
             return;
         }
-        if (users.containsKey(normalizedEmail)) {
-            error.setText("An account already exists for this email.");
-            return;
-        }
 
-        Staff staff = new Staff();
-        staff.setID("S%03d".formatted(users.size() + 1));
-        staff.setFirstName(clean(firstName.getText()));
-        staff.setLastName(clean(lastName.getText()));
-        staff.setEmail(normalizedEmail);
-        staff.setPassword(password.getText());
-        staff.setJobType(role.getValue());
-        staff.setDepartment("Student Services");
-        users.put(normalizedEmail, staff);
-        currentUser = staff;
-        showDashboard();
+        try {
+            if (StaffRepository.findByEmail(normalizedEmail) != null) {
+                error.setText("An account already exists for this email.");
+                return;
+            }
+
+            Staff staff = new Staff();
+            staff.setID(StaffRepository.nextStaffId());
+            staff.setFirstName(capitalize(clean(firstName.getText())));
+            staff.setLastName(capitalize(clean(lastName.getText())));
+            staff.setEmail(normalizedEmail);
+            staff.setJobType(role.getValue());
+            staff.setDepartment("Student Services");
+            staff.setPasswordHash(StaffRepository.hashPassword(password.getText()));
+
+            StaffRepository.insert(staff);
+
+            currentUser = staff;
+            showDashboard();
+        } catch (SQLException e) {
+            error.setText("Registration failed: " + e.getMessage());
+        }
     }
 
     private void showDashboard() {
@@ -228,10 +241,16 @@ public class HelloController {
         records.getItems().addAll(add, updateMenuItem, deleteMenuItem);
 
         Menu reports = new Menu("Reports");
+
         MenuItem csv = new MenuItem("Export Filtered CSV");
         csv.setAccelerator(KeyCombination.keyCombination("Shortcut+E"));
         csv.setOnAction(event -> exportCsv());
-        reports.getItems().add(csv);
+
+        MenuItem pdf = new MenuItem("Export Filtered PDF");
+        pdf.setAccelerator(KeyCombination.keyCombination("Shortcut+P"));
+        pdf.setOnAction(event -> exportPdf());
+
+        reports.getItems().addAll(csv, pdf);
 
         Menu view = new Menu("View");
         MenuItem theme = new MenuItem("Switch Theme");
@@ -416,9 +435,14 @@ public class HelloController {
                 showAlert(Alert.AlertType.ERROR, "Duplicate ID", "Another student already uses this ID.");
                 return;
             }
-            copyFormIntoStudent(selected);
-            studentTable.refresh();
-            updateStatus("Updated student " + selected.getID() + ".");
+            try {
+                copyFormIntoStudent(selected);
+                StudentRepository.update(selected);
+                studentTable.refresh();
+                updateStatus("Updated student " + selected.getID() + ".");
+            } catch (SQLException e) {
+                showAlert(Alert.AlertType.ERROR, "Database Error", "Could not update student: " + e.getMessage());
+            }
             return;
         }
 
@@ -428,9 +452,15 @@ public class HelloController {
         }
         Student student = new Student();
         copyFormIntoStudent(student);
-        students.add(student);
-        clearForm();
-        updateStatus("Added student " + student.getID() + ".");
+
+        try {
+            StudentRepository.insert(student);
+            students.add(student);
+            clearForm();
+            updateStatus("Added student " + student.getID() + ".");
+        } catch (SQLException e) {
+            showAlert(Alert.AlertType.ERROR, "Database Error", "Could not add student: " + e.getMessage());
+        }
     }
 
     private void copyFormIntoStudent(Student student) {
@@ -468,9 +498,14 @@ public class HelloController {
         styleDialog(confirm.getDialogPane());
         confirm.setHeaderText("Confirm Delete");
         confirm.showAndWait().filter(ButtonType.OK::equals).ifPresent(button -> {
-            students.remove(selected);
-            clearForm();
-            updateStatus("Deleted student " + selected.getID() + ".");
+            try {
+                StudentRepository.deleteById(selected.getID());
+                students.remove(selected);
+                clearForm();
+                updateStatus("Deleted student " + selected.getID() + ".");
+            } catch (SQLException e) {
+                showAlert(Alert.AlertType.ERROR, "Database Error", "Could not delete student: " + e.getMessage());
+            }
         });
     }
 
@@ -495,25 +530,39 @@ public class HelloController {
 
     private void exportCsv() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Export Student Report");
+        chooser.setTitle("Export Student CSV Report");
         chooser.setInitialFileName("student-report.csv");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+
         File file = chooser.showSaveDialog(getWindow());
         if (file == null) {
             return;
         }
 
-        try (BufferedWriter writer = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8)) {
-            writer.write("ID,First Name,Last Name,Department,Major,GPA");
-            writer.newLine();
-            for (Student student : filteredStudents) {
-                writer.write(csv(student.getID()) + "," + csv(student.getFirstName()) + "," + csv(student.getLastName()) + ","
-                        + csv(student.getDepartment()) + "," + csv(student.getMajor()) + "," + csv(student.getGpa()));
-                writer.newLine();
-            }
+        try {
+            DataExportHandler.exportToCSV(new ArrayList<>(filteredStudents), file);
             updateStatus("Exported " + filteredStudents.size() + " student records to " + file.getName() + ".");
-        } catch (IOException exception) {
+        } catch (RuntimeException exception) {
             showAlert(Alert.AlertType.ERROR, "Export Failed", "Unable to write the CSV report: " + exception.getMessage());
+        }
+    }
+
+    private void exportPdf() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Export Student PDF Report");
+        chooser.setInitialFileName("student-report.pdf");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+
+        File file = chooser.showSaveDialog(getWindow());
+        if (file == null) {
+            return;
+        }
+
+        try {
+            DataExportHandler.exportToPDF(new ArrayList<>(filteredStudents), file);
+            updateStatus("Exported " + filteredStudents.size() + " student records to " + file.getName() + ".");
+        } catch (RuntimeException exception) {
+            showAlert(Alert.AlertType.ERROR, "Export Failed", "Unable to write the PDF report: " + exception.getMessage());
         }
     }
 
