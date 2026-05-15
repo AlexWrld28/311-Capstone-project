@@ -333,6 +333,7 @@ public class StudentRepository {
         return new Student(
                 rs.getString("id"),
                 rs.getString("first_name"),
+                rs.getString("middle_name"),
                 rs.getString("last_name"),
                 rs.getString("department"),
                 rs.getString("major"),

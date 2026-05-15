@@ -13,25 +13,30 @@ public class Student {
     @CsvBindByName(column = "First Name")
     private String firstName;
 
-    @CsvBindByPosition(position = 2)
+    @CsvBindByPosition(position = 3)
+    @CsvBindByName(column = "Middle Name")
+    private String middleName;
+
+    @CsvBindByPosition(position = 3)
     @CsvBindByName(column = "Last Name")
     private String lastName;
 
-    @CsvBindByPosition(position = 3)
+    @CsvBindByPosition(position = 4)
     @CsvBindByName(column = "Department")
     private String department;
 
-    @CsvBindByPosition(position = 4)
+    @CsvBindByPosition(position = 5)
     @CsvBindByName(column = "Major")
     private String major;
 
-    @CsvBindByPosition(position = 5)
+    @CsvBindByPosition(position = 6)
     @CsvBindByName(column = "GPA")
     private String gpa;
 
-    public Student(String id, String firstName, String lastName, String department, String major, String gpa) {
+    public Student(String id, String firstName, String middleName, String lastName, String department, String major, String gpa) {
         this.ID = id;
         this.firstName = firstName;
+        this.middleName = lastName;
         this.lastName = lastName;
         this.department = department;
         this.major = major;
@@ -55,6 +60,14 @@ public class Student {
 
     public void setFirstName(String firstName) {
         this.firstName = firstName;
+    }
+
+    public String getMiddleName() {
+        return middleName;
+    }
+
+    public void setMiddleName(String middleName) {
+        this.middleName = middleName;
     }
 
     public String getLastName() {
