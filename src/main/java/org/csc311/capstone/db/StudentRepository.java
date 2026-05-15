@@ -39,6 +39,7 @@ public class StudentRepository {
         String pageSql = """
             SELECT s.id,
                    s.first_name,
+                   s.middle_name,
                    s.last_name,
                    COALESCE(d.name, s.department) AS department,
                    COALESCE(m.name, s.major) AS major,
@@ -81,6 +82,7 @@ public class StudentRepository {
         String sql = """
             SELECT s.id,
                    s.first_name,
+                   s.middle_name,
                    s.last_name,
                    COALESCE(d.name, s.department) AS department,
                    COALESCE(m.name, s.major) AS major,
@@ -126,7 +128,7 @@ public class StudentRepository {
         Integer majorId = ReferenceDataRepository.findOrCreateMajorId(student.getMajor());
 
         String sql = """
-            INSERT INTO students (id, first_name, last_name, department, major, department_id, major_id, gpa)
+            INSERT INTO students (id, first_name, middle_name, last_name, department, major, department_id, major_id, gpa)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """;
 
@@ -135,6 +137,51 @@ public class StudentRepository {
 
             stmt.setString(1, student.getID());
             stmt.setString(2, student.getFirstName());
+            stmt.setString(3, student.getMiddleName());
+            stmt.setString(4, student.getLastName());
+            stmt.setString(5, student.getDepartment());
+            stmt.setString(6, student.getMajor());
+
+            if (departmentId == null) {
+                stmt.setNull(7, Types.INTEGER);
+            } else {
+                stmt.setInt(7, departmentId);
+            }
+
+            if (majorId == null) {
+                stmt.setNull(8, Types.INTEGER);
+            } else {
+                stmt.setInt(8, majorId);
+            }
+
+            stmt.setBigDecimal(9, new BigDecimal(student.getGpa()));
+
+            stmt.executeUpdate();
+        }
+    }
+
+    public static void update(Student student) throws SQLException {
+        Integer departmentId = ReferenceDataRepository.findOrCreateDepartmentId(student.getDepartment());
+        Integer majorId = ReferenceDataRepository.findOrCreateMajorId(student.getMajor());
+
+        String sql = """
+            UPDATE students
+            SET first_name = ?,
+                middle_name = ?,
+                last_name = ?,
+                department = ?,
+                major = ?,
+                department_id = ?,
+                major_id = ?,
+                gpa = ?
+            WHERE id = ?
+        """;
+
+        try (Connection conn = Database.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, student.getFirstName());
+            stmt.setString(2, student.getMiddleName());
             stmt.setString(3, student.getLastName());
             stmt.setString(4, student.getDepartment());
             stmt.setString(5, student.getMajor());
@@ -152,49 +199,7 @@ public class StudentRepository {
             }
 
             stmt.setBigDecimal(8, new BigDecimal(student.getGpa()));
-
-            stmt.executeUpdate();
-        }
-    }
-
-    public static void update(Student student) throws SQLException {
-        Integer departmentId = ReferenceDataRepository.findOrCreateDepartmentId(student.getDepartment());
-        Integer majorId = ReferenceDataRepository.findOrCreateMajorId(student.getMajor());
-
-        String sql = """
-            UPDATE students
-            SET first_name = ?,
-                last_name = ?,
-                department = ?,
-                major = ?,
-                department_id = ?,
-                major_id = ?,
-                gpa = ?
-            WHERE id = ?
-        """;
-
-        try (Connection conn = Database.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, student.getFirstName());
-            stmt.setString(2, student.getLastName());
-            stmt.setString(3, student.getDepartment());
-            stmt.setString(4, student.getMajor());
-
-            if (departmentId == null) {
-                stmt.setNull(5, Types.INTEGER);
-            } else {
-                stmt.setInt(5, departmentId);
-            }
-
-            if (majorId == null) {
-                stmt.setNull(6, Types.INTEGER);
-            } else {
-                stmt.setInt(6, majorId);
-            }
-
-            stmt.setBigDecimal(7, new BigDecimal(student.getGpa()));
-            stmt.setString(8, student.getID());
+            stmt.setString(9, student.getID());
 
             stmt.executeUpdate();
         }
@@ -312,6 +317,7 @@ public class StudentRepository {
     private static String buildOrderSql(StudentSearchCriteria criteria) {
         String sortColumn = switch (criteria.sortBy() == null ? "id" : criteria.sortBy()) {
             case "firstName" -> "s.first_name";
+            case "middleName" -> "s.middle_name";
             case "lastName" -> "s.last_name";
             case "department" -> "COALESCE(d.name, s.department)";
             case "major" -> "COALESCE(m.name, s.major)";
